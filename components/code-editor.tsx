@@ -8,8 +8,10 @@ import type { WebContainer } from "@webcontainer/api"
 interface CodeEditorProps {
   activeFile: string
   openFiles: string[]
+  fileContents: Record<string, string>
   onFileSelect: (file: string) => void
   onFileClose: (file: string) => void
+  onFileContentChange: (filePath: string, content: string) => void
   webcontainer: WebContainer | null
 }
 
@@ -29,11 +31,18 @@ const getLanguage = (filename: string) => {
   return "plaintext"
 }
 
-export function CodeEditor({ activeFile, openFiles, onFileSelect, onFileClose, webcontainer }: CodeEditorProps) {
+export function CodeEditor({
+  activeFile,
+  openFiles,
+  fileContents,
+  onFileSelect,
+  onFileClose,
+  onFileContentChange,
+  webcontainer,
+}: CodeEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
-  const [fileContents, setFileContents] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (editorRef.current && !monacoRef.current) {
@@ -85,7 +94,7 @@ export function CodeEditor({ activeFile, openFiles, onFileSelect, onFileClose, w
       monacoRef.current.onDidChangeModelContent(async () => {
         if (webcontainer && activeFile && monacoRef.current) {
           const content = monacoRef.current.getValue()
-          await webcontainer.fs.writeFile(activeFile, content)
+          onFileContentChange(activeFile, content)
           setUnsavedFiles((prev) => new Set([...prev, activeFile]))
         }
       })
@@ -104,22 +113,15 @@ export function CodeEditor({ activeFile, openFiles, onFileSelect, onFileClose, w
 
   // Load file content from WebContainer
   const loadFileContent = async () => {
-    if (webcontainer && activeFile && monacoRef.current) {
-      try {
-        const content = await webcontainer.fs.readFile(activeFile, "utf-8")
-        setFileContents((prev) => ({ ...prev, [activeFile]: content }))
-        monacoRef.current.setValue(content)
-        monaco.editor.setModelLanguage(monacoRef.current.getModel()!, getLanguage(activeFile))
-        // Remove from unsaved files when loading fresh content
-        setUnsavedFiles((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(activeFile)
-          return newSet
-        })
-      } catch (error) {
-        console.error("Error loading file:", error)
-        monacoRef.current.setValue(`// Error loading file: ${activeFile}\n// ${error}`)
-      }
+    if (activeFile && monacoRef.current) {
+      const content = fileContents[activeFile] ?? `// Error loading file: ${activeFile}`
+      monacoRef.current.setValue(content)
+      monaco.editor.setModelLanguage(monacoRef.current.getModel()!, getLanguage(activeFile))
+      setUnsavedFiles((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(activeFile)
+        return newSet
+      })
     }
   }
 

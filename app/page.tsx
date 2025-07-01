@@ -13,8 +13,17 @@ import { TutorialPanel } from "@/components/tutorial-panel"
 import { files } from "@/components/files"
 
 export default function AlgorandIDE() {
-  const [activeFile, setActiveFile] = useState("src/main.py")
-  const [openFiles, setOpenFiles] = useState<string[]>(["src/main.py"])
+  const [activeFile, setActiveFile] = useState(Object.keys(files)[0] || "")
+  const [openFiles, setOpenFiles] = useState<string[]>(Object.keys(files))
+  const [fileContents, setFileContents] = useState<Record<string, string>>(() => {
+    const initialContents: Record<string, string> = {}
+    for (const [path, fileNode] of Object.entries(files)) {
+      if ("file" in fileNode) {
+        initialContents[path] = fileNode.file.contents
+      }
+    }
+    return initialContents
+  })
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState(null)
@@ -97,6 +106,44 @@ export default function AlgorandIDE() {
       const nextFile = newOpenFiles[currentIndex] || newOpenFiles[currentIndex - 1] || newOpenFiles[0]
       setActiveFile(nextFile || "")
     }
+  }
+
+  const createFile = async (filePath: string) => {
+    if (!webcontainer) return
+    await webcontainer.fs.writeFile(filePath, "")
+    setFileContents((prev) => ({ ...prev, [filePath]: "" }))
+    setOpenFiles((prev) => [...prev, filePath])
+    setActiveFile(filePath)
+  }
+
+  const renameFile = async (oldPath: string, newPath: string) => {
+    if (!webcontainer) return
+    const content = await webcontainer.fs.readFile(oldPath, "utf-8")
+    await webcontainer.fs.rm(oldPath)
+    await webcontainer.fs.writeFile(newPath, content)
+
+    setFileContents((prev) => {
+      const newContents = { ...prev }
+      delete newContents[oldPath]
+      newContents[newPath] = content
+      return newContents
+    })
+
+    setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)))
+    if (activeFile === oldPath) {
+      setActiveFile(newPath)
+    }
+  }
+
+  const deleteFile = async (filePath: string) => {
+    if (!webcontainer) return
+    await webcontainer.fs.rm(filePath)
+    setFileContents((prev) => {
+      const newContents = { ...prev }
+      delete newContents[filePath]
+      return newContents
+    })
+    closeFile(filePath)
   }
 
   const handleBuild = async () => {
@@ -262,6 +309,9 @@ export default function AlgorandIDE() {
             activeFile={activeFile}
             onFileSelect={openFile}
             webcontainer={webcontainer}
+            onCreateFile={createFile}
+            onRenameFile={renameFile}
+            onDeleteFile={deleteFile}
           />
         </div>
 
@@ -285,8 +335,12 @@ export default function AlgorandIDE() {
                 <CodeEditor
                   activeFile={activeFile}
                   openFiles={openFiles}
+                  fileContents={fileContents}
                   onFileSelect={setActiveFile}
                   onFileClose={closeFile}
+                  onFileContentChange={(filePath, content) => {
+                    setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                  }}
                   webcontainer={webcontainer}
                 />
               )}

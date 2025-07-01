@@ -26,6 +26,9 @@ interface SidebarProps {
   activeFile: string
   onFileSelect: (file: string) => void
   webcontainer?: any
+  onCreateFile: (filePath: string) => void
+  onRenameFile: (oldPath: string, newPath: string) => void
+  onDeleteFile: (filePath: string) => void
 }
 
 const sidebarSections = [
@@ -61,7 +64,16 @@ const fileStructure = {
   "algorand.json": { type: "file", icon: "⚙️" },
 }
 
-export function Sidebar({ activeSection, onSectionChange, activeFile, onFileSelect, webcontainer }: SidebarProps) {
+export function Sidebar({
+  activeSection,
+  onSectionChange,
+  activeFile,
+  onFileSelect,
+  webcontainer,
+  onCreateFile,
+  onRenameFile,
+  onDeleteFile,
+}: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["src", "tests", "scripts"]))
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState<{ type: "file" | "folder"; path: string } | null>(null)
@@ -82,43 +94,23 @@ export function Sidebar({ activeSection, onSectionChange, activeFile, onFileSele
     setContextMenu({ x: e.clientX, y: e.clientY, path })
   }
 
-  const createFile = async (path: string, name: string) => {
-    if (webcontainer && name.trim()) {
-      try {
-        const fullPath = path ? `${path}/${name}` : name
-        await webcontainer.fs.writeFile(fullPath, "")
-        console.log(`Created file: ${fullPath}`)
-      } catch (error) {
-        console.error("Error creating file:", error)
-      }
-    }
+  const createFile = (path: string, name: string) => {
+    const fullPath = path ? `${path}/${name}` : name
+    onCreateFile(fullPath)
     setShowCreateDialog(null)
     setNewItemName("")
   }
 
   const createFolder = async (path: string, name: string) => {
-    if (webcontainer && name.trim()) {
-      try {
-        const fullPath = path ? `${path}/${name}` : name
-        await webcontainer.fs.mkdir(fullPath, { recursive: true })
-        console.log(`Created folder: ${fullPath}`)
-      } catch (error) {
-        console.error("Error creating folder:", error)
-      }
-    }
+    if (!webcontainer) return
+    const fullPath = path ? `${path}/${name}` : name
+    await webcontainer.fs.mkdir(fullPath, { recursive: true })
     setShowCreateDialog(null)
     setNewItemName("")
   }
 
-  const deleteItem = async (path: string) => {
-    if (webcontainer) {
-      try {
-        await webcontainer.fs.rm(path, { recursive: true })
-        console.log(`Deleted: ${path}`)
-      } catch (error) {
-        console.error("Error deleting item:", error)
-      }
-    }
+  const deleteItem = (path: string) => {
+    onDeleteFile(path)
     setContextMenu(null)
   }
 
@@ -362,6 +354,20 @@ export function Sidebar({ activeSection, onSectionChange, activeFile, onFileSele
           >
             <Trash2 className="w-4 h-4" />
             Delete
+          </button>
+          <button
+            onClick={() => {
+              const newName = prompt(`Enter new name for ${contextMenu.path}`)
+              if (newName) {
+                const newPath = contextMenu.path.split("/").slice(0, -1).join("/") + "/" + newName
+                onRenameFile(contextMenu.path, newPath)
+              }
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-3 py-1 hover:bg-[#37373d] text-sm flex items-center gap-2"
+          >
+            <FilePlus className="w-4 h-4" />
+            Rename
           </button>
         </div>
       )}
