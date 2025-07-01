@@ -236,6 +236,20 @@ export default function AlgorandIDE() {
     }
   };
 
+  const handleGenerateClient = async () => {
+    if (!webcontainer) return;
+
+    setIsBuilding(true);
+    try {
+      const process = await webcontainer.spawn("npm", ["run", "generate-client"]);
+      await process.exit;
+    } catch (error) {
+      console.error("Generate client failed:", error);
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
   const handleStop = () => {
     setIsBuilding(false)
   }
@@ -340,6 +354,7 @@ export default function AlgorandIDE() {
         onBuild={handleBuild}
         onTest={handleTest}
         onDeploy={handleDeploy}
+        onGenerateClient={handleGenerateClient}
         onInstall={handleInstall}
         isBuilding={isBuilding}
         isInstalling={isInstalling}

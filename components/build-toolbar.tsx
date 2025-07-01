@@ -7,13 +7,14 @@ interface BuildToolbarProps {
   onTest: () => void
   onDeploy: () => void
   onInstall: () => void;
+  onGenerateClient: () => void;
   isBuilding: boolean
   isInstalling: boolean;
   onStop: () => void
   isWebContainerReady: boolean
 }
 
-export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, isBuilding, isInstalling, onStop, isWebContainerReady }: BuildToolbarProps) {
+export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, onGenerateClient, isBuilding, isInstalling, onStop, isWebContainerReady }: BuildToolbarProps) {
   return (
     <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-center px-4">
       <div className="flex items-center gap-2">
@@ -56,6 +57,17 @@ export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, isBuilding,
         >
           <Rocket className="w-4 h-4 mr-2" />
           Deploy
+        </Button>
+
+        <Button
+          onClick={onGenerateClient}
+          disabled={isBuilding || !isWebContainerReady}
+          size="sm"
+          variant="outline"
+          className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
+        >
+          <Square className="w-4 h-4 mr-2" />
+          Generate Client
         </Button>
 
         {isBuilding && (

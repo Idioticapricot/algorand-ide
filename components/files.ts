@@ -185,7 +185,8 @@ if __name__ == "__main__":
   "scripts": {
     "build": "python src/main.py",
     "test": "python -m pytest tests/",
-    "deploy": "python scripts/deploy.py"
+    "deploy": "python scripts/deploy.py",
+    "generate-client": "python scripts/generate_client.py"
   }
 }`,
     },
