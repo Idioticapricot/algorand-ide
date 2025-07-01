@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import type { WebContainerTerminalRef } from "@/components/webcontainer-terminal"
 import { WebContainer } from "@webcontainer/api"
 import { Sidebar } from "@/components/sidebar"
 import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynamic"
@@ -57,6 +58,7 @@ export default function AlgorandIDE() {
   const [isResizingWallet, setIsResizingWallet] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const webContainerTerminalRef = useRef<WebContainerTerminalRef>(null);
 
   const webcontainerRef = useRef<WebContainer | 'pending' | null>(null);
   useEffect(() => {
@@ -184,6 +186,10 @@ export default function AlgorandIDE() {
 
   
 
+  const handleTerminalOutput = useCallback((data: string) => {
+    webContainerTerminalRef.current?.addOutput(data);
+  }, []);
+
   const handleInstall = async () => {
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
@@ -191,8 +197,16 @@ export default function AlgorandIDE() {
     }
 
     setIsInstalling(true);
-    const process = await webcontainer.spawn("npm", ["install"]);
-    await process.exit;
+    handleTerminalOutput("Installing dependencies...");
+    const installProcess = await webcontainer.spawn("npm", ["install"]);
+    installProcess.output.pipeTo(new WritableStream({
+      write(data) {
+        console.log("Install output:", data);
+        handleTerminalOutput(data);
+      },
+    }));
+    const exitCode = await installProcess.exit;
+    handleTerminalOutput(`Install process exited with code: ${exitCode}`);
     setIsInstalling(false);
   };
 
@@ -203,48 +217,92 @@ export default function AlgorandIDE() {
     }
 
     setIsBuilding(true);
-    const process = await webcontainer.spawn("python", ["src/main.py"]);
-    await process.exit;
+    handleTerminalOutput("Building project...");
+    const buildProcess = await webcontainer.spawn("npm", ["run", "build"]);
+    buildProcess.output.pipeTo(new WritableStream({
+      write(data) {
+        console.log("Build output:", data);
+        handleTerminalOutput(data);
+      },
+    }));
+    const exitCode = await buildProcess.exit;
+    handleTerminalOutput(`Build process exited with code: ${exitCode}`);
     setIsBuilding(false);
   };
 
   const handleTest = async () => {
-    if (!webcontainer) return;
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
 
     setIsBuilding(true);
+    handleTerminalOutput("Running tests...");
     try {
-      const process = await webcontainer.spawn("npm", ["run", "test"]);
-      await process.exit;
+      const testProcess = await webcontainer.spawn("npm", ["run", "test"]);
+      testProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          console.log("Test output:", data);
+          handleTerminalOutput(data);
+        },
+      }));
+      const exitCode = await testProcess.exit;
+      handleTerminalOutput(`Test process exited with code: ${exitCode}`);
     } catch (error) {
       console.error("Test failed:", error);
+      handleTerminalOutput(`Test failed: ${error}`);
     } finally {
       setIsBuilding(false);
     }
   };
 
   const handleDeploy = async () => {
-    if (!webcontainer) return;
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
 
     setIsBuilding(true);
+    handleTerminalOutput("Deploying contract...");
     try {
-      const process = await webcontainer.spawn("npm", ["run", "deploy"]);
-      await process.exit;
+      const deployProcess = await webcontainer.spawn("npm", ["run", "deploy"]);
+      deployProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          console.log("Deploy output:", data);
+          handleTerminalOutput(data);
+        },
+      }));
+      const exitCode = await deployProcess.exit;
+      handleTerminalOutput(`Deploy process exited with code: ${exitCode}`);
     } catch (error) {
       console.error("Deploy failed:", error);
+      handleTerminalOutput(`Deploy failed: ${error}`);
     } finally {
       setIsBuilding(false);
     }
   };
 
   const handleGenerateClient = async () => {
-    if (!webcontainer) return;
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
 
     setIsBuilding(true);
+    handleTerminalOutput("Generating client...");
     try {
-      const process = await webcontainer.spawn("npm", ["run", "generate-client"]);
-      await process.exit;
+      const generateClientProcess = await webcontainer.spawn("npm", ["run", "generate-client"]);
+      generateClientProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          console.log("Generate Client output:", data);
+          handleTerminalOutput(data);
+        },
+      }));
+      const exitCode = await generateClientProcess.exit;
+      handleTerminalOutput(`Generate client process exited with code: ${exitCode}`);
     } catch (error) {
       console.error("Generate client failed:", error);
+      handleTerminalOutput(`Generate client failed: ${error}`);
     } finally {
       setIsBuilding(false);
     }
@@ -449,6 +507,7 @@ export default function AlgorandIDE() {
           >
             <div className="flex-1 border-r border-[#2d2d30]">
               <WebContainerTerminal
+                ref={webContainerTerminalRef}
                 title="BUILD TERMINAL"
                 webcontainer={webcontainer}
               />
