@@ -5,39 +5,27 @@ import type { WebContainer } from "@webcontainer/api"
 
 interface WebContainerTerminalProps {
   title: string
-  onReady?: (webcontainer: WebContainer) => void
+  webcontainer: WebContainer | null
 }
 
-export function WebContainerTerminal({ title, onReady }: WebContainerTerminalProps) {
+export function WebContainerTerminal({ title, webcontainer }: WebContainerTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const [output, setOutput] = useState<string[]>([])
-  const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
 
   useEffect(() => {
-    // Get the WebContainer instance from parent component
-    const getWebContainer = async () => {
-      // This will be passed from the parent component
-      addOutput(`${title} ready - waiting for WebContainer...`)
+    if (webcontainer) {
+      addOutput(`${title} ready`)
     }
-
-    getWebContainer()
-  }, [title])
+  }, [webcontainer, title])
 
   const addOutput = (text: string) => {
     setOutput((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${text}`])
   }
 
-  const executeCommand = async (command: string, args: string[] = []) => {
-    if (!webcontainer) {
-      addOutput("WebContainer not ready")
-      return
-    }
+  useEffect(() => {
+    if (!webcontainer) return
 
-    try {
-      addOutput(`$ ${command} ${args.join(" ")}`)
-
-      const process = await webcontainer.spawn(command, args)
-
+    const handleProcessOutput = (process: any) => {
       process.output.pipeTo(
         new WritableStream({
           write(data) {
@@ -45,16 +33,14 @@ export function WebContainerTerminal({ title, onReady }: WebContainerTerminalPro
           },
         }),
       )
-
-      const exitCode = await process.exit
-      addOutput(`Process exited with code: ${exitCode}`)
-
-      return exitCode
-    } catch (error) {
-      addOutput(`Error: ${error}`)
-      return 1
     }
-  }
+
+    webcontainer.on("spawn", handleProcessOutput)
+
+    return () => {
+      // webcontainer.off("spawn", handleProcessOutput) // not available in current version
+    }
+  }, [webcontainer])
 
   useEffect(() => {
     if (terminalRef.current) {

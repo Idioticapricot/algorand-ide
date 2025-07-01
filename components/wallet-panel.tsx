@@ -5,7 +5,7 @@ import { X, Send, RefreshCw, ExternalLink, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface WalletPanelProps {
-  wallet: {
+  wallet?: {
     address: string
     balance: number
     privateKey: string
@@ -19,7 +19,7 @@ interface WalletPanelProps {
 export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
   const [sendAmount, setSendAmount] = useState("")
   const [sendAddress, setSendAddress] = useState("")
-  const [algoPrice, setAlgoPrice] = useState(wallet.algoPrice || 0)
+  const [algoPrice, setAlgoPrice] = useState(wallet?.algoPrice || 0)
 
   useEffect(() => {
     const fetchAlgoPrice = async () => {
@@ -32,10 +32,14 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
       }
     }
 
-    if (!wallet.algoPrice) {
+    if (!wallet?.algoPrice) {
       fetchAlgoPrice()
     }
-  }, [wallet.algoPrice])
+  }, [wallet?.algoPrice])
+
+  if (!wallet || !wallet.address) {
+    return null
+  }
 
   const copyAddress = () => {
     navigator.clipboard.writeText(wallet.address)
@@ -62,7 +66,7 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
             <div>
               <div className="text-sm font-medium">Algorand Wallet</div>
               <div className="text-xs text-[#969696] flex items-center gap-1">
-                {wallet.address.substring(0, 8)}...{wallet.address.substring(wallet.address.length - 4)}
+                {wallet.address || "Invalid Address"}
                 <Button variant="ghost" size="icon" className="w-3 h-3" onClick={copyAddress}>
                   <Copy className="w-2 h-2" />
                 </Button>

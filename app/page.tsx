@@ -12,6 +12,15 @@ import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
 import { files } from "@/components/files"
 
+interface Wallet {
+  address: string
+  balance: number
+  privateKey: string
+  mnemonic: string
+  transactions: any[]
+  algoPrice: number
+}
+
 export default function AlgorandIDE() {
   const [activeFile, setActiveFile] = useState(Object.keys(files)[0] || "")
   const [openFiles, setOpenFiles] = useState<string[]>(Object.keys(files))
@@ -26,7 +35,7 @@ export default function AlgorandIDE() {
   })
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
-  const [wallet, setWallet] = useState(null)
+  const [wallet, setWallet] = useState<Wallet | null>(null)
 
   // Layout state
   const [sidebarWidth, setSidebarWidth] = useState(280)
@@ -59,7 +68,18 @@ export default function AlgorandIDE() {
 
     const savedWallet = localStorage.getItem("algorand-wallet")
     if (savedWallet) {
-      setWallet(JSON.parse(savedWallet))
+      try {
+        const parsedWallet = JSON.parse(savedWallet)
+        if (parsedWallet && typeof parsedWallet.address === 'string') {
+          setWallet(parsedWallet)
+        } else {
+          console.error("Invalid wallet data in localStorage:", parsedWallet)
+          localStorage.removeItem("algorand-wallet") // Clear invalid data
+        }
+      } catch (error) {
+        console.error("Error parsing wallet from localStorage:", error)
+        localStorage.removeItem("algorand-wallet") // Clear corrupted data
+      }
     }
 
     return () => {
@@ -75,7 +95,7 @@ export default function AlgorandIDE() {
       const account = algosdk.generateAccount()
 
       const newWallet = {
-        address: account.addr,
+        address: account.addr.toString(),
         balance: 0,
         privateKey: algosdk.secretKeyToMnemonic(account.sk),
         mnemonic: algosdk.secretKeyToMnemonic(account.sk),
@@ -150,14 +170,9 @@ export default function AlgorandIDE() {
     if (!webcontainer) return
 
     setIsBuilding(true)
-    try {
-      const process = await webcontainer.spawn("npm", ["run", "build"])
-      await process.exit
-    } catch (error) {
-      console.error("Build failed:", error)
-    } finally {
-      setIsBuilding(false)
-    }
+    const process = await webcontainer.spawn("npm", ["run", "build"])
+    await process.exit
+    setIsBuilding(false)
   }
 
   const handleTest = async () => {
@@ -269,19 +284,19 @@ export default function AlgorandIDE() {
           <span className="text-[#cccccc] font-medium">Algorand IDE</span>
         </div>
         <div className="flex items-center gap-2">
-          {!wallet ? (
+          {wallet && wallet.address ? (
+            <button
+              onClick={() => setShowWallet(!showWallet)}
+              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
+            >
+              Wallet: {String(wallet.address) || "Invalid Address"}
+            </button>
+          ) : (
             <button
               onClick={createWallet}
               className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
             >
               Create Wallet
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowWallet(!showWallet)}
-              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
-            >
-              Wallet: {wallet.address.substring(0, 8)}...
             </button>
           )}
         </div>
@@ -383,9 +398,7 @@ export default function AlgorandIDE() {
             <div className="flex-1 border-r border-[#2d2d30]">
               <WebContainerTerminal
                 title="BUILD TERMINAL"
-                onReady={(wc) => {
-                  // WebContainer is already initialized in useEffect
-                }}
+                webcontainer={webcontainer}
               />
             </div>
             <div className="flex-1">
