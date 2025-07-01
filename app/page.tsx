@@ -289,7 +289,7 @@ export default function AlgorandIDE() {
               onClick={() => setShowWallet(!showWallet)}
               className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
             >
-              Wallet: {String(wallet.address) || "Invalid Address"}
+              Wallet: {`${String(wallet.address.substring(0,10))}...` || "Invalid Address"}
             </button>
           ) : (
             <button
