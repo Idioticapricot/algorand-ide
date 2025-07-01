@@ -8,35 +8,41 @@ interface WebContainerTerminalProps {
   webcontainer: WebContainer | null
 }
 
-export interface WebContainerTerminalRef {
-  addOutput: (text: string) => void;
+interface WebContainerTerminalProps {
+  title: string;
+  webcontainer: WebContainer | null;
+  output: string[];
+  onAddOutput: (text: string) => void;
 }
 
-export const WebContainerTerminal = forwardRef<WebContainerTerminalRef, WebContainerTerminalProps>(
-  ({ title, webcontainer }, ref) => {
+export function WebContainerTerminal({
+  title,
+  webcontainer,
+  output,
+  onAddOutput,
+}: WebContainerTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [output, setOutput] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState<string>("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const addOutputLine = (line: string) => {
-    setOutput((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${line}`]);
-  };
+  
+
+  
 
   const executeCommand = async (command: string) => {
     if (!command.trim()) return;
 
-    addOutputLine(`$ ${command}`);
+    onAddOutput(`$ ${command}`);
     setCommandHistory((prev) => [...prev, command]);
     setHistoryIndex(-1);
     setCurrentInput("");
     setIsProcessing(true);
 
     if (!webcontainer) {
-      addOutputLine("Error: WebContainer not ready.");
+      onAddOutput("Error: WebContainer not ready.");
       setIsProcessing(false);
       return;
     }
@@ -48,13 +54,13 @@ export const WebContainerTerminal = forwardRef<WebContainerTerminalRef, WebConta
       process.output.pipeTo(
         new WritableStream({
           write(data) {
-            addOutputLine(data);
+            onAddOutput(data);
           },
         }),
       );
 
       const exitCode = await process.exit;
-      addOutputLine(`Command exited with code: ${exitCode}`);
+      onAddOutput(`Command exited with code: ${exitCode}`);
     } catch (error: any) {
       addOutputLine(`Error executing command: ${error.message}`);
     } finally {
@@ -96,9 +102,9 @@ export const WebContainerTerminal = forwardRef<WebContainerTerminalRef, WebConta
 
   useEffect(() => {
     if (webcontainer) {
-      addOutputLine(`${title} ready`);
+      onAddOutput(`${title} ready`);
     }
-  }, [webcontainer, title]);
+  }, [webcontainer, title, onAddOutput]);
 
   return (
     <div className="h-full bg-[#1e1e1e] flex flex-col">
@@ -133,4 +139,4 @@ export const WebContainerTerminal = forwardRef<WebContainerTerminalRef, WebConta
       </div>
     </div>
   );
-});
+}

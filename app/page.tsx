@@ -6,7 +6,7 @@ import type { WebContainerTerminalRef } from "@/components/webcontainer-terminal
 import { WebContainer } from "@webcontainer/api"
 import { Sidebar } from "@/components/sidebar"
 import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynamic"
-import { WebContainerTerminalDynamic as WebContainerTerminal } from "@/components/webcontainer-terminal-dynamic"
+import { WebContainerTerminal } from "@/components/webcontainer-terminal"
 import { XTermTerminalDynamic as XTermTerminal } from "@/components/xterm-terminal-dynamic"
 import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
@@ -77,8 +77,8 @@ export default function AlgorandIDE() {
   const [isResizingTerminal, setIsResizingTerminal] = useState(false)
   const [isResizingWallet, setIsResizingWallet] = useState(false)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const webContainerTerminalRef = useRef<WebContainerTerminalRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
 
   const webcontainerRef = useRef<WebContainer | 'pending' | null>(null);
   useEffect(() => {
@@ -125,7 +125,11 @@ export default function AlgorandIDE() {
         webcontainerRef.current = null;
       }
     }
-  }, [])
+  }, []);
+
+  const handleTerminalOutput = useCallback((data: string) => {
+    setTerminalOutput((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${data}`]);
+  }, []);
 
   const createWallet = async () => {
     try {
@@ -206,9 +210,7 @@ export default function AlgorandIDE() {
 
   
 
-  const handleTerminalOutput = useCallback((data: string) => {
-    webContainerTerminalRef.current?.addOutput(data);
-  }, []);
+  
 
   const handleInstall = async () => {
     if (!webcontainer) {
@@ -221,7 +223,6 @@ export default function AlgorandIDE() {
     const installProcess = await webcontainer.spawn("npm", ["install"]);
     installProcess.output.pipeTo(new WritableStream({
       write(data) {
-        console.log("Install output:", data);
         handleTerminalOutput(data);
       },
     }));
@@ -241,7 +242,6 @@ export default function AlgorandIDE() {
     const buildProcess = await webcontainer.spawn("npm", ["run", "build"]);
     buildProcess.output.pipeTo(new WritableStream({
       write(data) {
-        console.log("Build output:", data);
         handleTerminalOutput(data);
       },
     }));
@@ -262,7 +262,6 @@ export default function AlgorandIDE() {
       const testProcess = await webcontainer.spawn("npm", ["run", "test"]);
       testProcess.output.pipeTo(new WritableStream({
         write(data) {
-          console.log("Test output:", data);
           handleTerminalOutput(data);
         },
       }));
@@ -527,9 +526,10 @@ export default function AlgorandIDE() {
           >
             <div className="flex-1 border-r border-[#2d2d30]">
               <WebContainerTerminal
-                ref={webContainerTerminalRef}
                 title="BUILD TERMINAL"
                 webcontainer={webcontainer}
+                output={terminalOutput}
+                onAddOutput={handleTerminalOutput}
               />
             </div>
             <div className="flex-1">
