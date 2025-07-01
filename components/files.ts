@@ -179,8 +179,16 @@ if __name__ == "__main__":
   "name": "algorand-project",
   "type": "module",
   "dependencies": {
-    "pyteal": "latest",
-    "py-algorand-sdk": "latest"
+    "@algorandfoundation/algokit-utils": "^9.0.1",
+    "algosdk": "^3.2.0",
+    "@algorandfoundation/algokit-client-generator": "^5.0.0",
+    "@algorandfoundation/tealscript": "^0.106.3",
+    "@jest/globals": "^29.5.0",
+    "@joe-p/algokit-generate-component": "^0.2.0",
+    "jest": "^29.5.0",
+    "prettier": "^3.0.3",
+    "ts-jest": "^29.1.0",
+    "typescript": "5.0.2"
   },
   "scripts": {
     "build": "python src/main.py",
