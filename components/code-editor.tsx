@@ -118,7 +118,7 @@ export function CodeEditor({
   // Load file content from WebContainer
   const loadFileContent = async () => {
     if (activeFile && monacoRef.current) {
-      const content = fileContents[activeFile] ?? `// Error loading file: ${activeFile}`
+      const content = fileContents[activeFile] ?? `// Loading file: ${activeFile}...`
       monacoRef.current.setValue(content)
       monaco.editor.setModelLanguage(monacoRef.current.getModel()!, getLanguage(activeFile))
       setUnsavedFiles((prev) => {

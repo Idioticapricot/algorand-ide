@@ -6,18 +6,29 @@ interface BuildToolbarProps {
   onBuild: () => void
   onTest: () => void
   onDeploy: () => void
+  onInstall: () => void;
   isBuilding: boolean
+  isInstalling: boolean;
   onStop: () => void
   isWebContainerReady: boolean
 }
 
-export function BuildToolbar({ onBuild, onTest, onDeploy, isBuilding, onStop, isWebContainerReady }: BuildToolbarProps) {
+export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, isBuilding, isInstalling, onStop, isWebContainerReady }: BuildToolbarProps) {
   return (
     <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-center px-4">
       <div className="flex items-center gap-2">
         <Button
+          onClick={onInstall}
+          disabled={isBuilding || isInstalling || !isWebContainerReady}
+          size="sm"
+          className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
+        >
+          <Hammer className="w-4 h-4 mr-2" />
+          Install
+        </Button>
+        <Button
           onClick={onBuild}
-          disabled={isBuilding || !isWebContainerReady}
+          disabled={isBuilding || isInstalling || !isWebContainerReady}
           size="sm"
           className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
         >

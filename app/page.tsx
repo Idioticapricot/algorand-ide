@@ -47,6 +47,7 @@ export default function AlgorandIDE() {
   // WebContainer state - only one instance
   const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
   const [isBuilding, setIsBuilding] = useState(false)
+  const [isInstalling, setIsInstalling] = useState(false)
 
   const [isWebContainerReady, setIsWebContainerReady] = useState(false)
 
@@ -181,52 +182,59 @@ export default function AlgorandIDE() {
     closeFile(filePath)
   }
 
+  
+
+  const handleInstall = async () => {
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    setIsInstalling(true);
+    const process = await webcontainer.spawn("npm", ["install"]);
+    await process.exit;
+    setIsInstalling(false);
+  };
+
   const handleBuild = async () => {
     if (!webcontainer) {
-      console.log("WebContainer not ready.")
-      return
+      handleTerminalOutput("WebContainer not ready.");
+      return;
     }
 
-    setIsBuilding(true)
-    console.log("Attempting to spawn python main.py...")
-    const process = await webcontainer.spawn("python", ["src/main.py"])
-    process.output.pipeTo(new WritableStream({
-      write(data) {
-        console.log("Build Output:", data)
-      }
-    }))
-    await process.exit
-    console.log("python main.py process exited.")
-    setIsBuilding(false)
-  }
+    setIsBuilding(true);
+    const process = await webcontainer.spawn("python", ["src/main.py"]);
+    await process.exit;
+    setIsBuilding(false);
+  };
 
   const handleTest = async () => {
-    if (!webcontainer) return
+    if (!webcontainer) return;
 
-    setIsBuilding(true)
+    setIsBuilding(true);
     try {
-      const process = await webcontainer.spawn("npm", ["run", "test"])
-      await process.exit
+      const process = await webcontainer.spawn("npm", ["run", "test"]);
+      await process.exit;
     } catch (error) {
-      console.error("Test failed:", error)
+      console.error("Test failed:", error);
     } finally {
-      setIsBuilding(false)
+      setIsBuilding(false);
     }
-  }
+  };
 
   const handleDeploy = async () => {
-    if (!webcontainer) return
+    if (!webcontainer) return;
 
-    setIsBuilding(true)
+    setIsBuilding(true);
     try {
-      const process = await webcontainer.spawn("npm", ["run", "deploy"])
-      await process.exit
+      const process = await webcontainer.spawn("npm", ["run", "deploy"]);
+      await process.exit;
     } catch (error) {
-      console.error("Deploy failed:", error)
+      console.error("Deploy failed:", error);
     } finally {
-      setIsBuilding(false)
+      setIsBuilding(false);
     }
-  }
+  };
 
   const handleStop = () => {
     setIsBuilding(false)
@@ -332,7 +340,9 @@ export default function AlgorandIDE() {
         onBuild={handleBuild}
         onTest={handleTest}
         onDeploy={handleDeploy}
+        onInstall={handleInstall}
         isBuilding={isBuilding}
+        isInstalling={isInstalling}
         onStop={handleStop}
         isWebContainerReady={isWebContainerReady}
       />
