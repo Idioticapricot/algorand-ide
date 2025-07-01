@@ -25,17 +25,37 @@ interface Wallet {
 }
 
 export default function AlgorandIDE() {
-  const [activeFile, setActiveFile] = useState(Object.keys(files)[0] || "")
-  const [openFiles, setOpenFiles] = useState<string[]>(Object.keys(files))
-  const [fileContents, setFileContents] = useState<Record<string, string>>(() => {
-    const initialContents: Record<string, string> = {}
-    for (const [path, fileNode] of Object.entries(files)) {
-      if ("file" in fileNode) {
-        initialContents[path] = fileNode.file.contents
+  const getAllFilePaths = (tree: any, currentPath: string = '') => {
+    let paths: string[] = [];
+    for (const key in tree) {
+      const newPath = currentPath ? `${currentPath}/${key}` : key;
+      if (tree[key].file) {
+        paths.push(newPath);
+      } else if (tree[key].directory) {
+        paths = paths.concat(getAllFilePaths(tree[key].directory, newPath));
       }
     }
-    return initialContents
-  })
+    return paths;
+  };
+
+  const initialFilePaths = getAllFilePaths(files);
+
+  const [activeFile, setActiveFile] = useState(initialFilePaths[0] || "");
+  const [openFiles, setOpenFiles] = useState<string[]>(initialFilePaths);
+  const getAllFileContents = (tree: any, currentPath: string = '') => {
+    let contents: Record<string, string> = {};
+    for (const key in tree) {
+      const newPath = currentPath ? `${currentPath}/${key}` : key;
+      if (tree[key].file) {
+        contents[newPath] = tree[key].file.contents;
+      } else if (tree[key].directory) {
+        contents = { ...contents, ...getAllFileContents(tree[key].directory, newPath) };
+      }
+    }
+    return contents;
+  };
+
+  const [fileContents, setFileContents] = useState<Record<string, string>>(() => getAllFileContents(files));
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState<Wallet | null>(null)
