@@ -1,0 +1,345 @@
+"use client"
+
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
+import { WebContainer } from "@webcontainer/api"
+import { Sidebar } from "@/components/sidebar"
+import { CodeEditor } from "@/components/code-editor"
+import { WebContainerTerminal } from "@/components/webcontainer-terminal"
+import { XTermTerminal } from "@/components/xterm-terminal"
+import { BuildToolbar } from "@/components/build-toolbar"
+import { WalletPanel } from "@/components/wallet-panel"
+import { TutorialPanel } from "@/components/tutorial-panel"
+import { files } from "@/components/files"
+
+export default function AlgorandIDE() {
+  const [activeFile, setActiveFile] = useState("src/main.py")
+  const [openFiles, setOpenFiles] = useState<string[]>(["src/main.py"])
+  const [sidebarSection, setSidebarSection] = useState("explorer")
+  const [showWallet, setShowWallet] = useState(false)
+  const [wallet, setWallet] = useState(null)
+
+  // Layout state
+  const [sidebarWidth, setSidebarWidth] = useState(280)
+  const [terminalHeight, setTerminalHeight] = useState(300)
+  const [walletWidth, setWalletWidth] = useState(320)
+
+  // WebContainer state - only one instance
+  const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
+  const [isBuilding, setIsBuilding] = useState(false)
+
+  // Resize state
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false)
+  const [isResizingTerminal, setIsResizingTerminal] = useState(false)
+  const [isResizingWallet, setIsResizingWallet] = useState(false)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const initWebContainer = async () => {
+      try {
+        const webcontainerInstance = await WebContainer.boot()
+        await webcontainerInstance.mount(files)
+        setWebcontainer(webcontainerInstance)
+      } catch (error) {
+        console.error("Failed to initialize WebContainer:", error)
+      }
+    }
+
+    initWebContainer()
+
+    const savedWallet = localStorage.getItem("algorand-wallet")
+    if (savedWallet) {
+      setWallet(JSON.parse(savedWallet))
+    }
+
+    return () => {
+      if (webcontainer) {
+        webcontainer.teardown()
+      }
+    }
+  }, [])
+
+  const createWallet = async () => {
+    try {
+      const algosdk = await import("algosdk")
+      const account = algosdk.generateAccount()
+
+      const newWallet = {
+        address: account.addr,
+        balance: 0,
+        privateKey: algosdk.secretKeyToMnemonic(account.sk),
+        mnemonic: algosdk.secretKeyToMnemonic(account.sk),
+        transactions: [],
+        algoPrice: 0,
+      }
+
+      setWallet(newWallet)
+      localStorage.setItem("algorand-wallet", JSON.stringify(newWallet))
+    } catch (error) {
+      console.error("Error creating wallet:", error)
+    }
+  }
+
+  const openFile = (filePath: string) => {
+    if (!openFiles.includes(filePath)) {
+      setOpenFiles((prev) => [...prev, filePath])
+    }
+    setActiveFile(filePath)
+  }
+
+  const closeFile = (filePath: string) => {
+    const newOpenFiles = openFiles.filter((f) => f !== filePath)
+    setOpenFiles(newOpenFiles)
+
+    if (activeFile === filePath) {
+      const currentIndex = openFiles.indexOf(filePath)
+      const nextFile = newOpenFiles[currentIndex] || newOpenFiles[currentIndex - 1] || newOpenFiles[0]
+      setActiveFile(nextFile || "")
+    }
+  }
+
+  const handleBuild = async () => {
+    if (!webcontainer) return
+
+    setIsBuilding(true)
+    try {
+      const process = await webcontainer.spawn("npm", ["run", "build"])
+      await process.exit
+    } catch (error) {
+      console.error("Build failed:", error)
+    } finally {
+      setIsBuilding(false)
+    }
+  }
+
+  const handleTest = async () => {
+    if (!webcontainer) return
+
+    setIsBuilding(true)
+    try {
+      const process = await webcontainer.spawn("npm", ["run", "test"])
+      await process.exit
+    } catch (error) {
+      console.error("Test failed:", error)
+    } finally {
+      setIsBuilding(false)
+    }
+  }
+
+  const handleDeploy = async () => {
+    if (!webcontainer) return
+
+    setIsBuilding(true)
+    try {
+      const process = await webcontainer.spawn("npm", ["run", "deploy"])
+      await process.exit
+    } catch (error) {
+      console.error("Deploy failed:", error)
+    } finally {
+      setIsBuilding(false)
+    }
+  }
+
+  const handleStop = () => {
+    setIsBuilding(false)
+  }
+
+  // Resize handlers
+  const handleSidebarMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingSidebar(true)
+  }
+
+  const handleTerminalMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingTerminal(true)
+  }
+
+  const handleWalletMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingWallet(true)
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+
+      if (isResizingSidebar) {
+        const newWidth = Math.max(200, Math.min(600, e.clientX - containerRect.left))
+        setSidebarWidth(newWidth)
+      }
+
+      if (isResizingTerminal) {
+        const newHeight = Math.max(200, Math.min(600, containerRect.bottom - e.clientY))
+        setTerminalHeight(newHeight)
+      }
+
+      if (isResizingWallet) {
+        const newWidth = Math.max(250, Math.min(500, containerRect.right - e.clientX))
+        setWalletWidth(newWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false)
+      setIsResizingTerminal(false)
+      setIsResizingWallet(false)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    if (isResizingSidebar || isResizingTerminal || isResizingWallet) {
+      document.addEventListener("mousemove", handleMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+      document.body.style.userSelect = "none"
+
+      if (isResizingSidebar || isResizingWallet) {
+        document.body.style.cursor = "col-resize"
+      } else if (isResizingTerminal) {
+        document.body.style.cursor = "row-resize"
+      }
+
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove)
+        document.removeEventListener("mouseup", handleMouseUp)
+      }
+    }
+  }, [isResizingSidebar, isResizingTerminal, isResizingWallet])
+
+  return (
+    <div className="h-screen bg-[#1e1e1e] text-white flex flex-col overflow-hidden">
+      {/* Title Bar */}
+      <div className="h-9 bg-[#323233] flex items-center justify-between px-4 text-sm border-b border-[#2d2d30] flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+            <div className="w-3 h-3 rounded-full bg-[#28ca42]"></div>
+          </div>
+          <span className="text-[#cccccc] font-medium">Algorand IDE</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {!wallet ? (
+            <button
+              onClick={createWallet}
+              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
+            >
+              Create Wallet
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowWallet(!showWallet)}
+              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
+            >
+              Wallet: {wallet.address.substring(0, 8)}...
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Build Toolbar */}
+      <BuildToolbar
+        onBuild={handleBuild}
+        onTest={handleTest}
+        onDeploy={handleDeploy}
+        isBuilding={isBuilding}
+        onStop={handleStop}
+      />
+
+      {/* Main Layout */}
+      <div ref={containerRef} className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div
+          className="bg-[#252526] border-r border-[#2d2d30] flex-shrink-0 overflow-hidden"
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          <Sidebar
+            activeSection={sidebarSection}
+            onSectionChange={setSidebarSection}
+            activeFile={activeFile}
+            onFileSelect={openFile}
+            webcontainer={webcontainer}
+          />
+        </div>
+
+        {/* Sidebar Resize Handle */}
+        <div
+          className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
+          onMouseDown={handleSidebarMouseDown}
+        >
+          <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Editor Area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Code Editor */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {sidebarSection === "tutorials" ? (
+                <TutorialPanel />
+              ) : (
+                <CodeEditor
+                  activeFile={activeFile}
+                  openFiles={openFiles}
+                  onFileSelect={setActiveFile}
+                  onFileClose={closeFile}
+                  webcontainer={webcontainer}
+                />
+              )}
+            </div>
+
+            {/* Wallet Panel */}
+            {showWallet && wallet && (
+              <>
+                {/* Wallet Resize Handle */}
+                <div
+                  className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
+                  onMouseDown={handleWalletMouseDown}
+                >
+                  <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+                </div>
+
+                <div
+                  className="bg-[#252526] border-l border-[#2d2d30] flex-shrink-0 overflow-hidden"
+                  style={{ width: `${walletWidth}px` }}
+                >
+                  <WalletPanel wallet={wallet} onClose={() => setShowWallet(false)} />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Terminal Resize Handle */}
+          <div
+            className="h-1 bg-transparent hover:bg-[#0e639c] cursor-row-resize transition-colors flex-shrink-0 group"
+            onMouseDown={handleTerminalMouseDown}
+          >
+            <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+          </div>
+
+          {/* Dual Terminals - WebContainer + XTerm */}
+          <div
+            className="bg-[#1e1e1e] border-t border-[#2d2d30] flex-shrink-0 overflow-hidden flex"
+            style={{ height: `${terminalHeight}px` }}
+          >
+            <div className="flex-1 border-r border-[#2d2d30]">
+              <WebContainerTerminal
+                title="BUILD TERMINAL"
+                onReady={(wc) => {
+                  // WebContainer is already initialized in useEffect
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              <XTermTerminal title="TERMINAL" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
