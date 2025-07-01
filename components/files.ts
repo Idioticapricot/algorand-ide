@@ -1,8 +1,10 @@
 /** @satisfies {import('@webcontainer/api').FileSystemTree} */
 export const files = {
-  "src/main.py": {
-    file: {
-      contents: `from pyteal import *
+  src: {
+    directory: {
+      "main.py": {
+        file: {
+          contents: `from pyteal import *
 
 def approval_program():
     """
@@ -47,14 +49,14 @@ if __name__ == "__main__":
     
     print("Approval Program:")
     print(approval_teal)
-    print("\\nClear State Program:")
+    print("\nClear State Program:")
     print(clear_state_teal)
 `,
-    },
-  },
-  "src/contract.py": {
-    file: {
-      contents: `from algosdk import account, mnemonic
+        },
+      },
+      "contract.py": {
+        file: {
+          contents: `from algosdk import account, mnemonic
 from algosdk.v2client import algod
 from algosdk.transaction import ApplicationCreateTxn, wait_for_confirmation
 import base64
@@ -96,36 +98,22 @@ class AlgorandContract:
         
         return self.app_id
 `,
-    },
-  },
-  "package.json": {
-    file: {
-      contents: `{
-  "name": "algorand-project",
-  "type": "module",
-  "dependencies": {
-    "pyteal": "latest",
-    "py-algorand-sdk": "latest"
-  },
-  "scripts": {
-    "build": "python src/main.py",
-    "test": "python -m pytest tests/",
-    "deploy": "python scripts/deploy.py"
-  }
-}`,
-    },
-  },
-  "requirements.txt": {
-    file: {
-      contents: `pyteal==0.20.1
-py-algorand-sdk==2.7.0
-pytest==7.4.0
+        },
+      },
+      "utils.py": {
+        file: {
+          contents: `
+# Utility functions for Algorand development
 `,
+        },
+      },
     },
   },
-  "tests/test_contract.py": {
-    file: {
-      contents: `import pytest
+  tests: {
+    directory: {
+      "test_contract.py": {
+        file: {
+          contents: `import pytest
 from algosdk import account
 from src.contract import AlgorandContract
 
@@ -144,11 +132,15 @@ class TestAlgorandContract:
         assert len(self.test_account[0]) == 58  # Address length
         assert len(self.test_account[1]) == 64  # Private key length
 `,
+        },
+      },
     },
   },
-  "scripts/deploy.py": {
-    file: {
-      contents: `#!/usr/bin/env python3
+  scripts: {
+    directory: {
+      "deploy.py": {
+        file: {
+          contents: `#!/usr/bin/env python3
 """
 Deployment script for Algorand smart contracts
 """
@@ -176,6 +168,33 @@ def main():
 
 if __name__ == "__main__":
     main()
+`,
+        },
+      },
+    },
+  },
+  "package.json": {
+    file: {
+      contents: `{
+  "name": "algorand-project",
+  "type": "module",
+  "dependencies": {
+    "pyteal": "latest",
+    "py-algorand-sdk": "latest"
+  },
+  "scripts": {
+    "build": "python src/main.py",
+    "test": "python -m pytest tests/",
+    "deploy": "python scripts/deploy.py"
+  }
+}`,
+    },
+  },
+  "requirements.txt": {
+    file: {
+      contents: `pyteal==0.20.1
+py-algorand-sdk==2.7.0
+pytest==7.4.0
 `,
     },
   },
@@ -213,6 +232,11 @@ This project demonstrates how to build and deploy Algorand smart contracts using
 - \`tests/\` - Test files
 - \`scripts/\` - Deployment scripts
 `,
+    },
+  },
+  "algorand.json": {
+    file: {
+      contents: `{}`,
     },
   },
 }
