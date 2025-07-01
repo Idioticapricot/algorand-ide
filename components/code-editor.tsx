@@ -44,10 +44,12 @@ export function CodeEditor({
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
 
+  const isMonacoInitialized = useRef(false);
+
   useEffect(() => {
-    if (editorRef.current && !monacoRef.current) {
+    if (editorRef.current && !isMonacoInitialized.current) {
       // Clear any existing content first
-      editorRef.current.innerHTML = ""
+      editorRef.current.innerHTML = "";
 
       // Define custom theme
       monaco.editor.defineTheme("algorand-dark", {
@@ -69,7 +71,7 @@ export function CodeEditor({
           "editor.inactiveSelectionBackground": "#3a3d41",
           "editorCursor.foreground": "#ffffff",
         },
-      })
+      });
 
       monacoRef.current = monaco.editor.create(editorRef.current, {
         value: "// Loading file...",
@@ -88,28 +90,30 @@ export function CodeEditor({
           indentation: true,
           bracketPairs: true,
         },
-      })
+      });
 
       // Handle content changes
       monacoRef.current.onDidChangeModelContent(async () => {
         if (webcontainer && activeFile && monacoRef.current) {
-          const content = monacoRef.current.getValue()
-          onFileContentChange(activeFile, content)
-          setUnsavedFiles((prev) => new Set([...prev, activeFile]))
+          const content = monacoRef.current.getValue();
+          onFileContentChange(activeFile, content);
+          setUnsavedFiles((prev) => new Set([...prev, activeFile]));
         }
-      })
+      });
 
       // Load initial file
-      loadFileContent()
+      loadFileContent();
+      isMonacoInitialized.current = true;
     }
 
     return () => {
-      if (monacoRef.current) {
-        monacoRef.current.dispose()
-        monacoRef.current = null
+      if (monacoRef.current && isMonacoInitialized.current) {
+        monacoRef.current.dispose();
+        monacoRef.current = null;
+        isMonacoInitialized.current = false;
       }
-    }
-  }, [])
+    };
+  }, []);
 
   // Load file content from WebContainer
   const loadFileContent = async () => {

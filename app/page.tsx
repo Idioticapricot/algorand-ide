@@ -4,13 +4,15 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { WebContainer } from "@webcontainer/api"
 import { Sidebar } from "@/components/sidebar"
-import { CodeEditor } from "@/components/code-editor"
-import { WebContainerTerminal } from "@/components/webcontainer-terminal"
-import { XTermTerminal } from "@/components/xterm-terminal"
+import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynamic"
+import { WebContainerTerminalDynamic as WebContainerTerminal } from "@/components/webcontainer-terminal-dynamic"
+import { XTermTerminalDynamic as XTermTerminal } from "@/components/xterm-terminal-dynamic"
 import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
 import { files } from "@/components/files"
+
+
 
 interface Wallet {
   address: string
@@ -46,6 +48,8 @@ export default function AlgorandIDE() {
   const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
   const [isBuilding, setIsBuilding] = useState(false)
 
+  const [isWebContainerReady, setIsWebContainerReady] = useState(false)
+
   // Resize state
   const [isResizingSidebar, setIsResizingSidebar] = useState(false)
   const [isResizingTerminal, setIsResizingTerminal] = useState(false)
@@ -53,18 +57,28 @@ export default function AlgorandIDE() {
 
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const webcontainerRef = useRef<WebContainer | 'pending' | null>(null);
   useEffect(() => {
-    const initWebContainer = async () => {
-      try {
-        const webcontainerInstance = await WebContainer.boot()
-        await webcontainerInstance.mount(files)
-        setWebcontainer(webcontainerInstance)
-      } catch (error) {
-        console.error("Failed to initialize WebContainer:", error)
-      }
+    if (webcontainerRef.current) {
+      return;
     }
 
-    initWebContainer()
+    webcontainerRef.current = 'pending';
+
+    const initWebContainer = async () => {
+      try {
+        const webcontainerInstance = await WebContainer.boot();
+        await webcontainerInstance.mount(files);
+        setWebcontainer(webcontainerInstance);
+        setIsWebContainerReady(true);
+        webcontainerRef.current = webcontainerInstance;
+      } catch (error) {
+        console.error("Failed to initialize WebContainer:", error);
+        webcontainerRef.current = null;
+      }
+    };
+
+    initWebContainer();
 
     const savedWallet = localStorage.getItem("algorand-wallet")
     if (savedWallet) {
@@ -83,8 +97,9 @@ export default function AlgorandIDE() {
     }
 
     return () => {
-      if (webcontainer) {
-        webcontainer.teardown()
+      if (webcontainerRef.current && webcontainerRef.current !== 'pending') {
+        (webcontainerRef.current as WebContainer).teardown();
+        webcontainerRef.current = null;
       }
     }
   }, [])
@@ -167,11 +182,21 @@ export default function AlgorandIDE() {
   }
 
   const handleBuild = async () => {
-    if (!webcontainer) return
+    if (!webcontainer) {
+      console.log("WebContainer not ready.")
+      return
+    }
 
     setIsBuilding(true)
-    const process = await webcontainer.spawn("npm", ["run", "build"])
+    console.log("Attempting to spawn python main.py...")
+    const process = await webcontainer.spawn("python", ["src/main.py"])
+    process.output.pipeTo(new WritableStream({
+      write(data) {
+        console.log("Build Output:", data)
+      }
+    }))
     await process.exit
+    console.log("python main.py process exited.")
     setIsBuilding(false)
   }
 
@@ -309,6 +334,7 @@ export default function AlgorandIDE() {
         onDeploy={handleDeploy}
         isBuilding={isBuilding}
         onStop={handleStop}
+        isWebContainerReady={isWebContainerReady}
       />
 
       {/* Main Layout */}
@@ -327,6 +353,7 @@ export default function AlgorandIDE() {
             onCreateFile={createFile}
             onRenameFile={renameFile}
             onDeleteFile={deleteFile}
+            isWebContainerReady={isWebContainerReady}
           />
         </div>
 

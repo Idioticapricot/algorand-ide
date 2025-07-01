@@ -8,15 +8,16 @@ interface BuildToolbarProps {
   onDeploy: () => void
   isBuilding: boolean
   onStop: () => void
+  isWebContainerReady: boolean
 }
 
-export function BuildToolbar({ onBuild, onTest, onDeploy, isBuilding, onStop }: BuildToolbarProps) {
+export function BuildToolbar({ onBuild, onTest, onDeploy, isBuilding, onStop, isWebContainerReady }: BuildToolbarProps) {
   return (
     <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-center px-4">
       <div className="flex items-center gap-2">
         <Button
           onClick={onBuild}
-          disabled={isBuilding}
+          disabled={isBuilding || !isWebContainerReady}
           size="sm"
           className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
         >
@@ -26,7 +27,7 @@ export function BuildToolbar({ onBuild, onTest, onDeploy, isBuilding, onStop }: 
 
         <Button
           onClick={onTest}
-          disabled={isBuilding}
+          disabled={isBuilding || !isWebContainerReady}
           size="sm"
           variant="outline"
           className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
@@ -37,7 +38,7 @@ export function BuildToolbar({ onBuild, onTest, onDeploy, isBuilding, onStop }: 
 
         <Button
           onClick={onDeploy}
-          disabled={isBuilding}
+          disabled={isBuilding || !isWebContainerReady}
           size="sm"
           variant="outline"
           className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"

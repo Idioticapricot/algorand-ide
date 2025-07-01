@@ -29,6 +29,7 @@ interface SidebarProps {
   onCreateFile: (filePath: string) => void
   onRenameFile: (oldPath: string, newPath: string) => void
   onDeleteFile: (filePath: string) => void
+  isWebContainerReady: boolean
 }
 
 const sidebarSections = [
@@ -73,6 +74,7 @@ export function Sidebar({
   onCreateFile,
   onRenameFile,
   onDeleteFile,
+  isWebContainerReady,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["src", "tests", "scripts"]))
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
@@ -144,6 +146,7 @@ export function Sidebar({
                   }}
                   className="p-1 hover:bg-[#37373d] rounded"
                   title="New File"
+                  disabled={!isWebContainerReady}
                 >
                   <FilePlus className="w-3 h-3" />
                 </button>
@@ -154,6 +157,7 @@ export function Sidebar({
                   }}
                   className="p-1 hover:bg-[#37373d] rounded"
                   title="New Folder"
+                  disabled={!isWebContainerReady}
                 >
                   <FolderPlus className="w-3 h-3" />
                 </button>
@@ -183,6 +187,7 @@ export function Sidebar({
               }}
               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#37373d] rounded"
               title="Delete"
+              disabled={!isWebContainerReady}
             >
               <Trash2 className="w-3 h-3 text-red-400" />
             </button>
@@ -223,6 +228,7 @@ export function Sidebar({
                 onClick={() => setShowCreateDialog({ type: "file", path: "" })}
                 className="p-1 hover:bg-[#37373d] rounded"
                 title="New File"
+                disabled={!isWebContainerReady}
               >
                 <FilePlus className="w-4 h-4" />
               </button>
@@ -230,6 +236,7 @@ export function Sidebar({
                 onClick={() => setShowCreateDialog({ type: "folder", path: "" })}
                 className="p-1 hover:bg-[#37373d] rounded"
                 title="New Folder"
+                disabled={!isWebContainerReady}
               >
                 <FolderPlus className="w-4 h-4" />
               </button>
@@ -334,6 +341,7 @@ export function Sidebar({
               setContextMenu(null)
             }}
             className="w-full text-left px-3 py-1 hover:bg-[#37373d] text-sm flex items-center gap-2"
+            disabled={!isWebContainerReady}
           >
             <FilePlus className="w-4 h-4" />
             New File
@@ -344,6 +352,7 @@ export function Sidebar({
               setContextMenu(null)
             }}
             className="w-full text-left px-3 py-1 hover:bg-[#37373d] text-sm flex items-center gap-2"
+            disabled={!isWebContainerReady}
           >
             <FolderPlus className="w-4 h-4" />
             New Folder
@@ -351,6 +360,7 @@ export function Sidebar({
           <button
             onClick={() => deleteItem(contextMenu.path)}
             className="w-full text-left px-3 py-1 hover:bg-[#37373d] text-sm flex items-center gap-2 text-red-400"
+            disabled={!isWebContainerReady}
           >
             <Trash2 className="w-4 h-4" />
             Delete
@@ -365,6 +375,7 @@ export function Sidebar({
               setContextMenu(null)
             }}
             className="w-full text-left px-3 py-1 hover:bg-[#37373d] text-sm flex items-center gap-2"
+            disabled={!isWebContainerReady}
           >
             <FilePlus className="w-4 h-4" />
             Rename
