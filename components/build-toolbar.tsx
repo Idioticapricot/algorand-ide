@@ -1,6 +1,12 @@
 "use client"
-import { Square, Hammer, TestTube, Rocket } from "lucide-react"
+import { Square, Hammer, TestTube, Rocket, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface BuildToolbarProps {
   onBuild: () => void
@@ -12,11 +18,25 @@ interface BuildToolbarProps {
   isInstalling: boolean;
   onStop: () => void
   isWebContainerReady: boolean
+  selectedTemplate: string
+  onTemplateChange: (template: string) => void
 }
 
-export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, onGenerateClient, isBuilding, isInstalling, onStop, isWebContainerReady }: BuildToolbarProps) {
+export function BuildToolbar({ 
+  onBuild, 
+  onTest, 
+  onDeploy, 
+  onInstall, 
+  onGenerateClient, 
+  isBuilding, 
+  isInstalling, 
+  onStop, 
+  isWebContainerReady,
+  selectedTemplate,
+  onTemplateChange
+}: BuildToolbarProps) {
   return (
-    <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-center px-4">
+    <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-between px-4">
       <div className="flex items-center gap-2">
         <Button
           onClick={onInstall}
@@ -85,6 +105,36 @@ export function BuildToolbar({ onBuild, onTest, onDeploy, onInstall, onGenerateC
             </>
           )}
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-[#cccccc] mr-2">Template:</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent min-w-[140px] justify-between"
+            >
+              {selectedTemplate}
+              <ChevronDown className="w-4 h-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-[#2d2d30] border-[#3e3e42]">
+            <DropdownMenuItem 
+              onClick={() => onTemplateChange("PyTeal")}
+              className="text-[#cccccc] hover:bg-[#37373d] cursor-pointer"
+            >
+              PyTeal
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onTemplateChange("TealScript")}
+              className="text-[#cccccc] hover:bg-[#37373d] cursor-pointer"
+            >
+              TealScript
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

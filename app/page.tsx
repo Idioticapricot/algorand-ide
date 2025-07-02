@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
-import type { WebContainerTerminalRef } from "@/components/webcontainer-terminal"
+
 import { WebContainer } from "@webcontainer/api"
 import { Sidebar } from "@/components/sidebar"
 import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynamic"
@@ -12,6 +12,7 @@ import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
 import { files } from "@/components/files"
+import { tealScriptFiles } from "@/components/tealScriptFiles"
 
 
 
@@ -25,6 +26,10 @@ interface Wallet {
 }
 
 export default function AlgorandIDE() {
+  // Template state
+  const [selectedTemplate, setSelectedTemplate] = useState("PyTeal")
+  const [currentFiles, setCurrentFiles] = useState<any>(files)
+
   const getAllFilePaths = (tree: any, currentPath: string = '') => {
     let paths: string[] = [];
     for (const key in tree) {
@@ -38,7 +43,7 @@ export default function AlgorandIDE() {
     return paths;
   };
 
-  const initialFilePaths = getAllFilePaths(files);
+  const initialFilePaths = getAllFilePaths(currentFiles);
 
   const [activeFile, setActiveFile] = useState(initialFilePaths[0] || "");
   const [openFiles, setOpenFiles] = useState<string[]>(initialFilePaths);
@@ -55,7 +60,7 @@ export default function AlgorandIDE() {
     return contents;
   };
 
-  const [fileContents, setFileContents] = useState<Record<string, string>>(() => getAllFileContents(files));
+  const [fileContents, setFileContents] = useState<Record<string, string>>(() => getAllFileContents(currentFiles));
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState<Wallet | null>(null)
@@ -331,6 +336,27 @@ export default function AlgorandIDE() {
     setIsBuilding(false)
   }
 
+  const handleTemplateChange = async (template: string) => {
+    setSelectedTemplate(template)
+    
+    // Update current files based on template
+    const newFiles = template === "PyTeal" ? files : tealScriptFiles
+    setCurrentFiles(newFiles)
+    
+    // Update file paths and contents
+    const newFilePaths = getAllFilePaths(newFiles)
+    const newFileContents = getAllFileContents(newFiles)
+    
+    setOpenFiles(newFilePaths)
+    setFileContents(newFileContents)
+    setActiveFile(newFilePaths[0] || "")
+    
+    // Reinitialize WebContainer with new files
+    if (webcontainer) {
+      await webcontainer.mount(newFiles)
+    }
+  }
+
   // Resize handlers
   const handleSidebarMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -437,6 +463,8 @@ export default function AlgorandIDE() {
         isInstalling={isInstalling}
         onStop={handleStop}
         isWebContainerReady={isWebContainerReady}
+        selectedTemplate={selectedTemplate}
+        onTemplateChange={handleTemplateChange}
       />
 
       {/* Main Layout */}
