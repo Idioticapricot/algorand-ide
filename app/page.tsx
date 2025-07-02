@@ -612,7 +612,7 @@ export default function AlgorandIDE() {
               {sidebarSection === "tutorials" ? (
                 <TutorialPanel />
               ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                <ArtifactsPanel />
+                <ArtifactsPanel webcontainer={webcontainer} onDeploy={handleDeploy} />
               ) : sidebarSection === "programs" ? (
                 <ProgramsPanel />
               ) : sidebarSection === "settings" ? (
