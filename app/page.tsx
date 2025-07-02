@@ -598,7 +598,7 @@ export default function AlgorandIDE() {
         defaultSender: creator.address,defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      const deployResult = await appFactory.deploy({});
+      const deployResult = await appFactory.deploy({ });
       console.log("Deploy result:", deployResult);
       let appId = 'unknown';
       let txId = 'unknown';

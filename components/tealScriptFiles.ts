@@ -57,6 +57,29 @@ export class EventManager extends Contract {
 `,
         },
       },
+      "helloworld.algo.ts": {
+        file: {
+          contents: `import { Contract } from '@algorandfoundation/tealscript'
+
+
+
+export class HelloWorld extends Contract {
+
+
+    createApplication(): void {
+          log('Hello World');
+
+      }
+
+      
+
+        }
+
+
+
+`,
+        },
+      },
       "deploy.ts": {
         file: {
           contents: `import { AlgoKitConfig, getAlgoKitConfig } from '@algorandfoundation/algokit-utils';
