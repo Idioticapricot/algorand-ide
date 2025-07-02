@@ -29,9 +29,20 @@ interface Wallet {
 }
 
 // Utility to recursively fetch file structure from WebContainer
-async function fetchWebContainerFileTree(fs: any, dir = ".") {
+async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
   const tree: any = {};
   let entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Filter out node_modules and .py files if TealScript is selected
+  entries = entries.filter((entry: any) => {
+    if (entry.name === "node_modules") {
+      return false; // Always hide node_modules
+    }
+    if (selectedTemplate === "TealScript" && entry.isFile() && entry.name.endsWith(".py")) {
+      return false; // Hide .py files for TealScript template
+    }
+    return true;
+  });
 
   // Sort: directories first, then files, then by name
   entries = entries.sort((a: any, b: any) => {
@@ -44,7 +55,7 @@ async function fetchWebContainerFileTree(fs: any, dir = ".") {
     const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
 
     if (entry.isDirectory()) {
-      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath) };
+      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath, selectedTemplate) };
     } else if (entry.isFile()) {
       tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
     }
@@ -241,7 +252,7 @@ export default function AlgorandIDE() {
   // Fetch and update file structure from WebContainer, wrapped in useCallback
   const updateFileStructureFromWebContainer = useCallback(async () => {
     if (!webcontainer) return;
-    const tree = await fetchWebContainerFileTree(webcontainer.fs);
+    const tree = await fetchWebContainerFileTree(webcontainer.fs, ".", selectedTemplate);
     setCurrentFiles(tree);
 
     // This logic can be simplified or memoized if performance becomes an issue
