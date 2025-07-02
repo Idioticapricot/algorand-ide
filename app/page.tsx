@@ -431,7 +431,7 @@ export default function AlgorandIDE() {
             <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
             <div className="w-3 h-3 rounded-full bg-[#28ca42]"></div>
           </div>
-          <span className="text-[#cccccc] font-medium">Algorand IDE</span>
+          <span className="text-[#cccccc] font-medium">Algokit IDE</span>
         </div>
         <div className="flex items-center gap-2">
           {wallet && wallet.address ? (

@@ -2,45 +2,58 @@
 export const tealScriptFiles = {
   src: {
     directory: {
-      "main.ts": {
+      "main.algo.ts": {
         file: {
-          contents: `import { Contract } from '@algorandfoundation/tealscript';
+          contents: `import { Contract } from '@algorandfoundation/tealscript'
 
-class HelloWorld extends Contract {
-  // Global state
-  creator = GlobalStateKey<Address>();
-  message = GlobalStateKey<bytes>();
 
-  // Events
-  MessageSet = new EventLogger<{ message: bytes }>();
+type EventConfig = {
 
-  createApplication(): void {
-    this.creator.value = this.txn.sender;
-    this.message.value = 'Hello Algorand!';
-  }
-
-  hello(): void {
-    // Simple hello function
-  }
-
-  setMessage(message: bytes): void {
-    // Only creator can set message
-    assert(this.txn.sender === this.creator.value);
-    
-    this.message.value = message;
-    this.MessageSet.log({ message });
-  }
-
-  getMessage(): bytes {
-    return this.message.value;
-  }
-
-  getCreator(): Address {
-    return this.creator.value;
-  }
+    EventID: uint64
+    EventName: string
+    EventCategory : string
+    EventCreator: Address
+    MaxParticipants: uint64
+    Location: string
+    StartTime: uint64
+    EndTime : uint64
+    RegisteredCount: uint64
+    EventAppID: uint64
 }
 
-export default HelloWorld;
+type EventID = uint64
+
+
+export class EventManager extends Contract {
+
+    maintainerAddress = GlobalStateKey<Address>({ key: 'maintainerAddress' })
+    totalEvents = GlobalStateKey<uint64>({ key: 'totalEvents' })
+    lastEventID = GlobalStateKey<uint64>();
+
+    allEvents = BoxMap<EventID, EventConfig>({ prefix: 'e' })
+
+    createApplication(maintainerAddress: Address): void {
+        this.totalEvents.value = 0;
+        this.maintainerAddress.value = maintainerAddress
+        this.lastEventID.value = 0;
+      }
+
+      createEvent(eventConfig: EventConfig) : void {
+        
+        this.lastEventID.value += 1;
+        this.totalEvents.value +=1;
+        this.allEvents(this.lastEventID.value).value = eventConfig
+
+        
+
+      }
+
+
+
+
+
+}
+
 `,
         },
       },
@@ -105,57 +118,7 @@ export class HelloWorldClient {
       },
     },
   },
-  tests: {
-    directory: {
-      "test_contract.test.ts": {
-        file: {
-          contents: `import { describe, it, expect, beforeEach } from '@jest/globals';
-import { AlgoKitConfig, getAlgoKitConfig } from '@algorandfoundation/algokit-utils';
-import { HelloWorld } from '../src/main';
-
-describe('HelloWorld Contract', () => {
-  let config: AlgoKitConfig;
-  let app: HelloWorld;
-
-  beforeEach(async () => {
-    config = getAlgoKitConfig();
-    app = await HelloWorld.deploy({
-      config,
-      deployTimeParams: {},
-    });
-  });
-
-  it('should create application with correct initial state', async () => {
-    const creator = await app.getCreator();
-    const message = await app.getMessage();
-    
-    expect(creator).toBeDefined();
-    expect(message).toBe('Hello Algorand!');
-  });
-
-  it('should allow creator to set message', async () => {
-    const newMessage = 'Updated message';
-    const sender = config.sender;
-    
-    await app.setMessage({ 
-      sender,
-      message: new Uint8Array(Buffer.from(newMessage, 'utf8'))
-    });
-    
-    const message = await app.getMessage();
-    expect(message).toBe(newMessage);
-  });
-
-  it('should reject non-creator from setting message', async () => {
-    // This test would need a different sender account
-    // Implementation depends on test setup
-  });
-});
-`,
-        },
-      },
-    },
-  },
+  
   artifacts: {
     directory: {
     }},
@@ -175,7 +138,7 @@ describe('HelloWorld Contract', () => {
     "typescript": "5.0.2"
   },
   "scripts": {
-    "build": "tealscript src/*.ts artifacts",
+    "build": "tealscript src/*.algo.ts artifacts",
     "test": "jest",
     "deploy": "tsx src/deploy.ts",
     "generate-client": "algokit generate client src/main.ts"
