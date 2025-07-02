@@ -18,6 +18,7 @@ import { ArtifactFileViewerPanel } from "@/components/artifact-file-viewer-panel
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 import { useToast } from "@/components/ui/use-toast"
+import algosdk from "algosdk"
 
 
 
@@ -560,14 +561,23 @@ export default function AlgorandIDE() {
   // Deploy handler for ArtifactsPanel
   const deployArtifact = async (filename: string) => {
     if (!webcontainer) return;
+    console.log("deployArtifact called with filename:", filename);
     try {
       // Read artifact file from WebContainer
       const artifactPath = `artifacts/${filename}`;
+      console.log("Artifact path:", artifactPath);
       const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      console.log("File content:", fileContent);
       const appSpec = JSON.parse(fileContent);
+      console.log("Parsed appSpec:", appSpec);
+      if(!wallet){
+        throw Error
+      }
+      const account = algosdk.mnemonicToSecretKey(wallet?.mnemonic)
 
       // Get deployer account (mock or real logic)
       const creator = wallet || { address: "", mnemonic: "" };
+      console.log("Creator wallet:", creator);
       if (!creator.address) throw new Error("No deployer wallet/account found");
 
       // Import AlgorandClient from algokit
@@ -585,10 +595,11 @@ export default function AlgorandIDE() {
 
       const appFactory = algorandClient.client.getAppFactory({
         appSpec,
-        defaultSender: creator.address,
+        defaultSender: creator.address,defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
       const deployResult = await appFactory.deploy({});
+      console.log("Deploy result:", deployResult);
       let appId = 'unknown';
       let txId = 'unknown';
       if (deployResult?.result) {
@@ -602,6 +613,7 @@ export default function AlgorandIDE() {
           txId = resultAny.transactionId;
         }
       }
+      console.log("Extracted App ID:", appId, "Transaction ID:", txId);
       const deployed = {
         appId,
         txId,
@@ -615,6 +627,7 @@ export default function AlgorandIDE() {
       setDeployedContracts(updated);
       toast({ title: "Deploy succeeded", description: `App ID: ${deployed.appId}` });
     } catch (error: any) {
+      console.error("Deploy artifact failed:", error);
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     }
   };
