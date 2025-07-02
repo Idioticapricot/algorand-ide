@@ -11,6 +11,7 @@ import { XTermTerminalDynamic as XTermTerminal } from "@/components/xterm-termin
 import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
+import { ArtifactsPanel } from "@/components/artifacts-panel"
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 
@@ -606,6 +607,8 @@ export default function AlgorandIDE() {
             <div className="flex-1 flex flex-col overflow-hidden">
               {sidebarSection === "tutorials" ? (
                 <TutorialPanel />
+              ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
+                <ArtifactsPanel />
               ) : (
                 <CodeEditor
                   activeFile={activeFile}

@@ -5,5 +5,6 @@
 * [ ] Deploy Smart Contract... only when the wallet is loaded
 * [ ] Saving, Editing, Creating new file, full file interaction, realtime update of the file structure
 * [ ] tutorialTemplate, fetch form tutorials/ folder... and show them on the screen
-* [ ] Leaving the website / reloading the website alert the user . are you sure you want to leave
+* [X] Leaving the website / reloading the website alert the user . are you sure you want to leave
+* [ ] Programs tab should contain the number of built files from artifacts
 

@@ -39,6 +39,7 @@ const sidebarSections = [
   { id: "tests", icon: TestTube, label: "Tests" },
   { id: "programs", icon: Code, label: "Programs" },
   { id: "tutorials", icon: BookOpen, label: "Tutorials" },
+  { id: "settings", icon: Settings, label: "Settings" },
 ]
 
 
