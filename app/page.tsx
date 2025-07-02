@@ -152,8 +152,44 @@ export default function AlgorandIDE() {
 
       setWallet(newWallet)
       localStorage.setItem("algorand-wallet", JSON.stringify(newWallet))
+      
+      // Show funding instructions
+      console.log("Wallet created! To fund with test ALGO, visit:")
+      console.log(`https://testnet.algoexplorer.io/dispenser?addr=${newWallet.address}`)
     } catch (error) {
       console.error("Error creating wallet:", error)
+    }
+  }
+
+  const fundWallet = async () => {
+    if (!wallet?.address) return
+    
+    try {
+      // Use Algorand TestNet faucet
+      const response = await fetch("https://testnet-api.algonode.cloud/v2/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          to: wallet.address,
+          amount: 100000000, // 100 ALGO in microAlgos
+          fee: 1000,
+          firstRound: 1,
+          lastRound: 1000,
+          genesisID: "testnet-v1.0",
+          genesisHash: "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+        }),
+      })
+      
+      if (response.ok) {
+        console.log("Funding request submitted successfully")
+      } else {
+        console.error("Failed to fund wallet")
+      }
+    } catch (error) {
+      console.error("Error funding wallet:", error)
     }
   }
 

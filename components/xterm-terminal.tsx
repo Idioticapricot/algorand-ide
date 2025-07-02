@@ -496,6 +496,10 @@ export function XTermTerminal({ title }: XTermTerminalProps) {
         addLine("output", "")
         addLine("success", "✅ Account funded with 100 ALGO")
         addLine("info", "💡 You can now deploy contracts and make transactions")
+        addLine("output", "")
+        addLine("output", "🌐 Manual funding:")
+        addLine("output", "Visit: https://testnet.algoexplorer.io/dispenser")
+        addLine("output", "Enter your wallet address to receive test ALGO")
         break
 
       case "compile-teal":

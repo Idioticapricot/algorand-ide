@@ -232,4 +232,11 @@ This project demonstrates how to build and deploy Algorand smart contracts using
       contents: `{}`,
     },
   },
+  ".env": {
+    file: {
+      contents: `ALGOD_PORT=443
+      ALGOD_SERVER=https://testnet-api.4160.nodely.dev`,
+    },
+  },
+
 } 
