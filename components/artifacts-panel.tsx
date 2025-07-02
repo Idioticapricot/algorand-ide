@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 
 interface ArtifactsPanelProps {
   webcontainer: any;
-  onDeploy: () => Promise<void>;
+  onDeploy: (filename: string) => Promise<void>;
 }
 
 export function ArtifactsPanel({ webcontainer, onDeploy }: ArtifactsPanelProps) {
@@ -55,9 +55,9 @@ export function ArtifactsPanel({ webcontainer, onDeploy }: ArtifactsPanelProps) 
                 {file}
               </p>
               <button
-                onClick={onDeploy}
+                onClick={() => onDeploy(file)}
                 className="w-full px-3 py-1.5 rounded text-xs font-medium transition-colors"
-                style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)", hover: "var(--button-hover-color)" }}
+                style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)" }}
               >
                 Deploy
               </button>

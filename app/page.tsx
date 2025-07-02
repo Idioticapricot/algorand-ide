@@ -17,6 +17,7 @@ import { SettingsPanel } from "@/components/settings-panel"
 import { ArtifactFileViewerPanel } from "@/components/artifact-file-viewer-panel"
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
+import { useToast } from "@/components/ui/use-toast"
 
 
 
@@ -129,6 +130,18 @@ export default function AlgorandIDE() {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
 
   const webcontainerRef = useRef<WebContainer | 'pending' | null>(null);
+  const { toast } = useToast();
+  const [deployedContracts, setDeployedContracts] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return JSON.parse(localStorage.getItem("deployedContracts") || "[]");
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   useEffect(() => {
     if (webcontainerRef.current) {
       return;
@@ -544,6 +557,68 @@ export default function AlgorandIDE() {
     };
   }, []);
 
+  // Deploy handler for ArtifactsPanel
+  const deployArtifact = async (filename: string) => {
+    if (!webcontainer) return;
+    try {
+      // Read artifact file from WebContainer
+      const artifactPath = `artifacts/${filename}`;
+      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      const appSpec = JSON.parse(fileContent);
+
+      // Get deployer account (mock or real logic)
+      const creator = wallet || { address: "", mnemonic: "" };
+      if (!creator.address) throw new Error("No deployer wallet/account found");
+
+      // Import AlgorandClient from algokit
+      const { AlgorandClient } = await import("@algorandfoundation/algokit-utils");
+      const algorandClient = AlgorandClient.fromConfig({
+        algodConfig: {
+          server: "https://testnet-api.algonode.cloud",
+          token: "",
+        },
+        indexerConfig: {
+          server: "https://testnet-idx.algonode.cloud",
+          token: "",
+        },
+      });
+
+      const appFactory = algorandClient.client.getAppFactory({
+        appSpec,
+        defaultSender: creator.address,
+      });
+
+      const deployResult = await appFactory.deploy({});
+      let appId = 'unknown';
+      let txId = 'unknown';
+      if (deployResult?.result) {
+        const resultAny = deployResult.result as any;
+        if (resultAny.appId !== undefined && resultAny.appId !== null) {
+          appId = String(resultAny.appId);
+        }
+        if (typeof resultAny.txId === 'string') {
+          txId = resultAny.txId;
+        } else if (typeof resultAny.transactionId === 'string') {
+          txId = resultAny.transactionId;
+        }
+      }
+      const deployed = {
+        appId,
+        txId,
+        artifact: filename,
+        time: Date.now(),
+      };
+      // Store in localStorage
+      const prev = JSON.parse(localStorage.getItem("deployedContracts") || "[]");
+      const updated = [deployed, ...prev];
+      localStorage.setItem("deployedContracts", JSON.stringify(updated));
+      setDeployedContracts(updated);
+      toast({ title: "Deploy succeeded", description: `App ID: ${deployed.appId}` });
+    } catch (error: any) {
+      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "var(--background-color)", color: "var(--text-color)" }}>
       {/* Title Bar */}
@@ -616,10 +691,10 @@ export default function AlgorandIDE() {
 
         {/* Sidebar Resize Handle */}
         <div
-          className="w-1 bg-transparent hover:bg-[var(--button-color)] cursor-col-resize transition-colors flex-shrink-0 group"
+          className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
           onMouseDown={handleSidebarMouseDown}
         >
-          <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
+          <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
         </div>
 
         {/* Main Content Area */}
@@ -638,9 +713,9 @@ export default function AlgorandIDE() {
               ) : sidebarSection === "tutorials" ? (
                 <TutorialPanel />
               ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                <ArtifactsPanel webcontainer={webcontainer} onDeploy={handleDeploy} />
+                <ArtifactsPanel webcontainer={webcontainer} onDeploy={deployArtifact} />
               ) : sidebarSection === "programs" ? (
-                <ProgramsPanel />
+                <ProgramsPanel deployedContracts={deployedContracts} />
               ) : sidebarSection === "settings" ? (
                 <SettingsPanel />
               ) : (
