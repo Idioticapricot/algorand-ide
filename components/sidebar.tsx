@@ -31,6 +31,7 @@ interface SidebarProps {
   onDeleteFile: (filePath: string) => void
   isWebContainerReady: boolean
   fileStructure: any
+  onArtifactFileSelect: (filePath: string) => void
 }
 
 const sidebarSections = [
@@ -55,6 +56,7 @@ export function Sidebar({
   onDeleteFile,
   isWebContainerReady,
   fileStructure: fileStructureProp,
+  onArtifactFileSelect,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["src", "tests", "scripts"]))
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
@@ -155,7 +157,13 @@ export function Sidebar({
               activeFile === fullPath && "bg-[#37373d] text-white",
             )}
             style={{ paddingLeft: `${paddingLeft + 20}px` }}
-            onClick={() => onFileSelect(fullPath)}
+            onClick={() => {
+              if (activeSection === "build") {
+                onArtifactFileSelect(fullPath);
+              } else {
+                onFileSelect(fullPath);
+              }
+            }}
             onContextMenu={(e) => handleContextMenu(e, fullPath)}
           >
             <FileText className="w-4 h-4 text-[#cccccc]" />
@@ -242,7 +250,7 @@ export function Sidebar({
                 Artifacts
               </div>
               {fileStructureProp.artifacts && Object.keys(fileStructureProp.artifacts.directory).length > 0 ? (
-                <div>{renderFileTree(fileStructureProp.artifacts.directory)}</div>
+                <div>{renderFileTree(fileStructureProp.artifacts.directory, "artifacts")}</div>
               ) : (
                 <div className="px-3 py-1 text-xs text-[#969696]">No artifacts found.</div>
               )}

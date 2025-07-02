@@ -14,6 +14,7 @@ import { TutorialPanel } from "@/components/tutorial-panel"
 import { ArtifactsPanel } from "@/components/artifacts-panel"
 import { ProgramsPanel } from "@/components/programs-panel"
 import { SettingsPanel } from "@/components/settings-panel"
+import { ArtifactFileViewerPanel } from "@/components/artifact-file-viewer-panel"
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 
@@ -102,6 +103,7 @@ export default function AlgorandIDE() {
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState<Wallet | null>(null)
+  const [activeArtifactFile, setActiveArtifactFile] = useState<string | null>(null);
 
   // Layout state
   const [sidebarWidth, setSidebarWidth] = useState(280)
@@ -603,6 +605,7 @@ export default function AlgorandIDE() {
             onDeleteFile={deleteFile}
             isWebContainerReady={isWebContainerReady}
             fileStructure={currentFiles}
+            onArtifactFileSelect={setActiveArtifactFile}
           />
         </div>
 
@@ -620,7 +623,14 @@ export default function AlgorandIDE() {
           <div className="flex-1 flex overflow-hidden">
             {/* Code Editor */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {sidebarSection === "tutorials" ? (
+              {activeArtifactFile ? (
+                <ArtifactFileViewerPanel
+                  filePath={activeArtifactFile}
+                  webcontainer={webcontainer}
+                  onDeploy={handleDeploy}
+                  onClose={() => setActiveArtifactFile(null)}
+                />
+              ) : sidebarSection === "tutorials" ? (
                 <TutorialPanel />
               ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
                 <ArtifactsPanel webcontainer={webcontainer} onDeploy={handleDeploy} />
