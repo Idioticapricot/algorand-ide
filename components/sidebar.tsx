@@ -237,21 +237,15 @@ export function Sidebar({
           )}
 
           {activeSection === "build" && (
-            <div className="p-3">
-              <div className="space-y-2">
-                <button className="w-full text-left px-3 py-2.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-sm flex items-center gap-2 transition-colors">
-                  <Hammer className="w-4 h-4" />
-                  Build Project
-                </button>
-                <button className="w-full text-left px-3 py-2.5 bg-[#2d2d30] hover:bg-[#37373d] rounded text-sm flex items-center gap-2 transition-colors">
-                  <Code className="w-4 h-4" />
-                  Compile Contract
-                </button>
-                <button className="w-full text-left px-3 py-2.5 bg-[#2d2d30] hover:bg-[#37373d] rounded text-sm flex items-center gap-2 transition-colors">
-                  <Settings className="w-4 h-4" />
-                  Deploy to TestNet
-                </button>
+            <div className="py-2">
+              <div className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#969696] mb-2">
+                Artifacts
               </div>
+              {fileStructureProp.artifacts && Object.keys(fileStructureProp.artifacts.directory).length > 0 ? (
+                <div>{renderFileTree(fileStructureProp.artifacts.directory)}</div>
+              ) : (
+                <div className="px-3 py-1 text-xs text-[#969696]">No artifacts found.</div>
+              )}
             </div>
           )}
 
