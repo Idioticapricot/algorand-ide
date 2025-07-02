@@ -484,6 +484,7 @@ export default function AlgorandIDE() {
             onRenameFile={renameFile}
             onDeleteFile={deleteFile}
             isWebContainerReady={isWebContainerReady}
+            fileStructure={currentFiles}
           />
         </div>
 

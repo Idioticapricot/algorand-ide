@@ -30,6 +30,7 @@ interface SidebarProps {
   onRenameFile: (oldPath: string, newPath: string) => void
   onDeleteFile: (filePath: string) => void
   isWebContainerReady: boolean
+  fileStructure: any
 }
 
 const sidebarSections = [
@@ -40,30 +41,7 @@ const sidebarSections = [
   { id: "tutorials", icon: BookOpen, label: "Tutorials" },
 ]
 
-const fileStructure = {
-  src: {
-    type: "folder",
-    children: {
-      "main.py": { type: "file", icon: "🐍" },
-      "contract.py": { type: "file", icon: "🐍" },
-      "utils.py": { type: "file", icon: "🐍" },
-    },
-  },
-  tests: {
-    type: "folder",
-    children: {
-      "test_contract.py": { type: "file", icon: "🧪" },
-    },
-  },
-  scripts: {
-    type: "folder",
-    children: {
-      "deploy.py": { type: "file", icon: "🚀" },
-    },
-  },
-  "README.md": { type: "file", icon: "📝" },
-  "algorand.json": { type: "file", icon: "⚙️" },
-}
+
 
 export function Sidebar({
   activeSection,
@@ -75,6 +53,7 @@ export function Sidebar({
   onRenameFile,
   onDeleteFile,
   isWebContainerReady,
+  fileStructure: fileStructureProp,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["src", "tests", "scripts"]))
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
@@ -251,7 +230,7 @@ export function Sidebar({
               <div className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#969696] mb-2">
                 Hello Algorand
               </div>
-              <div>{renderFileTree(fileStructure)}</div>
+              <div>{renderFileTree(fileStructureProp)}</div>
             </div>
           )}
 
