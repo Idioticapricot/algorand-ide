@@ -457,6 +457,18 @@ export default function AlgorandIDE() {
     }
   }, [isResizingSidebar, isResizingTerminal, isResizingWallet])
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   return (
     <div className="h-screen bg-[#1e1e1e] text-white flex flex-col overflow-hidden">
       {/* Title Bar */}
