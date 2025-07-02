@@ -24,6 +24,14 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* Custom Theme Variables */
+    --background-color: #1e1e1e;
+    --text-color: #ffffff;
+    --sidebar-color: #252526;
+    --border-color: #2d2d30;
+    --button-color: #0e639c;
+    --button-hover-color: #1177bb;
   }
 
   .dark {

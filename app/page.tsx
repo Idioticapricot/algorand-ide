@@ -12,6 +12,8 @@ import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
 import { ArtifactsPanel } from "@/components/artifacts-panel"
+import { ProgramsPanel } from "@/components/programs-panel"
+import { SettingsPanel } from "@/components/settings-panel"
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 
@@ -525,29 +527,31 @@ export default function AlgorandIDE() {
   }, []);
 
   return (
-    <div className="h-screen bg-[#1e1e1e] text-white flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "var(--background-color)", color: "var(--text-color)" }}>
       {/* Title Bar */}
-      <div className="h-9 bg-[#323233] flex items-center justify-between px-4 text-sm border-b border-[#2d2d30] flex-shrink-0">
+      <div className="h-9 flex items-center justify-between px-4 text-sm border-b flex-shrink-0" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
             <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
             <div className="w-3 h-3 rounded-full bg-[#28ca42]"></div>
           </div>
-          <span className="text-[#cccccc] font-medium">Algokit IDE</span>
+          <span className="font-medium" style={{ color: "var(--text-color)" }}>Algokit IDE</span>
         </div>
         <div className="flex items-center gap-2">
           {wallet && wallet.address ? (
             <button
               onClick={() => setShowWallet(!showWallet)}
-              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
+              className="px-3 py-1.5 rounded text-xs font-medium transition-colors"
+              style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)" }}
             >
               Wallet: {`${String(wallet.address.substring(0,10))}...` || "Invalid Address"}
             </button>
           ) : (
             <button
               onClick={createWallet}
-              className="px-3 py-1.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-xs font-medium transition-colors"
+              className="px-3 py-1.5 rounded text-xs font-medium transition-colors"
+              style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)" }}
             >
               Create Wallet
             </button>
@@ -574,8 +578,8 @@ export default function AlgorandIDE() {
       <div ref={containerRef} className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <div
-          className="bg-[#252526] border-r border-[#2d2d30] flex-shrink-0 overflow-hidden"
-          style={{ width: `${sidebarWidth}px` }}
+          className="border-r flex-shrink-0 overflow-hidden"
+          style={{ width: `${sidebarWidth}px`, backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}
         >
           <Sidebar
             activeSection={sidebarSection}
@@ -593,10 +597,10 @@ export default function AlgorandIDE() {
 
         {/* Sidebar Resize Handle */}
         <div
-          className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
+          className="w-1 bg-transparent hover:bg-[var(--button-color)] cursor-col-resize transition-colors flex-shrink-0 group"
           onMouseDown={handleSidebarMouseDown}
         >
-          <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+          <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
         </div>
 
         {/* Main Content Area */}
@@ -609,6 +613,10 @@ export default function AlgorandIDE() {
                 <TutorialPanel />
               ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
                 <ArtifactsPanel />
+              ) : sidebarSection === "programs" ? (
+                <ProgramsPanel />
+              ) : sidebarSection === "settings" ? (
+                <SettingsPanel />
               ) : (
                 <CodeEditor
                   activeFile={activeFile}
@@ -629,15 +637,15 @@ export default function AlgorandIDE() {
               <>
                 {/* Wallet Resize Handle */}
                 <div
-                  className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
+                  className="w-1 bg-transparent hover:bg-[var(--button-color)] cursor-col-resize transition-colors flex-shrink-0 group"
                   onMouseDown={handleWalletMouseDown}
                 >
-                  <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+                  <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
                 </div>
 
                 <div
-                  className="bg-[#252526] border-l border-[#2d2d30] flex-shrink-0 overflow-hidden"
-                  style={{ width: `${walletWidth}px` }}
+                  className="border-l flex-shrink-0 overflow-hidden"
+                  style={{ width: `${walletWidth}px`, backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}
                 >
                   <WalletPanel wallet={wallet} onClose={() => setShowWallet(false)} />
                 </div>
@@ -647,18 +655,18 @@ export default function AlgorandIDE() {
 
           {/* Terminal Resize Handle */}
           <div
-            className="h-1 bg-transparent hover:bg-[#0e639c] cursor-row-resize transition-colors flex-shrink-0 group"
+            className="h-1 bg-transparent hover:bg-[var(--button-color)] cursor-row-resize transition-colors flex-shrink-0 group"
             onMouseDown={handleTerminalMouseDown}
           >
-            <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
+            <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
           </div>
 
           {/* Dual Terminals - WebContainer + XTerm */}
           <div
-            className="bg-[#1e1e1e] border-t border-[#2d2d30] flex-shrink-0 overflow-hidden flex"
-            style={{ height: `${terminalHeight}px` }}
+            className="border-t flex-shrink-0 overflow-hidden flex"
+            style={{ height: `${terminalHeight}px`, backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}
           >
-            <div className="flex-1 border-r border-[#2d2d30]">
+            <div className="flex-1 border-r" style={{ borderColor: "var(--border-color)" }}>
               <WebContainerTerminal
                 title="BUILD TERMINAL"
                 webcontainer={webcontainer}
