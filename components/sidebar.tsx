@@ -100,7 +100,7 @@ export function Sidebar({
       const fullPath = basePath ? `${basePath}/${name}` : name
       const paddingLeft = depth * 16 + 8
 
-      if (item.type === "folder") {
+      if (item.directory) {
         const isExpanded = expandedFolders.has(fullPath)
         return (
           <div key={fullPath}>
@@ -142,10 +142,10 @@ export function Sidebar({
                 </button>
               </div>
             </div>
-            {isExpanded && <div>{renderFileTree(item.children, fullPath, depth + 1)}</div>}
+            {isExpanded && <div>{renderFileTree(item.directory, fullPath, depth + 1)}</div>}
           </div>
         )
-      } else {
+      } else if (item.file) {
         return (
           <div
             key={fullPath}
@@ -157,7 +157,7 @@ export function Sidebar({
             onClick={() => onFileSelect(fullPath)}
             onContextMenu={(e) => handleContextMenu(e, fullPath)}
           >
-            <span className="text-xs">{item.icon}</span>
+            <FileText className="w-4 h-4 text-[#cccccc]" />
             <span className="text-[#cccccc] flex-1">{name}</span>
             <button
               onClick={(e) => {
@@ -173,6 +173,7 @@ export function Sidebar({
           </div>
         )
       }
+      return null
     })
   }
 

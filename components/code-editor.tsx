@@ -25,6 +25,10 @@ const getFileIcon = (filename: string) => {
 
 const getLanguage = (filename: string) => {
   if (filename.endsWith(".py")) return "python"
+  if (filename.endsWith(".ts")) return "typescript"
+  if (filename.endsWith(".tsx")) return "typescript"
+  if (filename.endsWith(".js")) return "javascript"
+  if (filename.endsWith(".jsx")) return "javascript"
   if (filename.endsWith(".md")) return "markdown"
   if (filename.endsWith(".json")) return "json"
   if (filename.endsWith(".txt")) return "plaintext"
