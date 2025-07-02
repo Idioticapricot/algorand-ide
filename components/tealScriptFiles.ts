@@ -156,6 +156,9 @@ describe('HelloWorld Contract', () => {
       },
     },
   },
+  artifacts: {
+    directory: {
+    }},
   "package.json": {
     file: {
       contents: `{
