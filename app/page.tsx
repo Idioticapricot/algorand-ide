@@ -30,17 +30,39 @@ async function fetchWebContainerFileTree(fs: any, dir = ".") {
   const tree: any = {};
   let entries = await fs.readdir(dir, { withFileTypes: true });
 
+  // If entries are just strings, map to objects with name only
+  entries = entries.map((entry: any) =>
+    typeof entry === "string" ? { name: entry } : entry
+  );
+
   // Sort: directories first, then files, then by name
   entries = entries.sort((a: any, b: any) => {
     if (a.kind === b.kind) return a.name.localeCompare(b.name);
+    if (!a.kind) return 1;
+    if (!b.kind) return -1;
     return a.kind === "directory" ? -1 : 1;
   });
 
   for (const entry of entries) {
-    const entryName = entry.name || entry;
+    const entryName = entry.name;
     const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
-    console.log(`Entry: ${entryName}, Kind: ${entry.kind}, FullPath: ${fullPath}`);
+    let isDirectory = false;
+
     if (entry.kind === "directory") {
+      isDirectory = true;
+    } else if (entry.kind === "file") {
+      isDirectory = false;
+    } else {
+      // Fallback: try reading as directory
+      try {
+        await fs.readdir(fullPath);
+        isDirectory = true;
+      } catch {
+        isDirectory = false;
+      }
+    }
+
+    if (isDirectory) {
       tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath) };
     } else {
       tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
@@ -121,6 +143,7 @@ export default function AlgorandIDE() {
       try {
         const webcontainerInstance = await WebContainer.boot();
         await webcontainerInstance.mount(files);
+        console.log("Files mounted. Initial readdir:", await webcontainerInstance.fs.readdir('.', { withFileTypes: true }));
         setWebcontainer(webcontainerInstance);
         setIsWebContainerReady(true);
         webcontainerRef.current = webcontainerInstance;
