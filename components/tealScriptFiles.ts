@@ -172,7 +172,7 @@ describe('HelloWorld Contract', () => {
     "typescript": "5.0.2"
   },
   "scripts": {
-    "build": "tealscript compile src/main.ts",
+    "build": "tealscript src/*.ts artifacts",
     "test": "jest",
     "deploy": "tsx src/deploy.ts",
     "generate-client": "algokit generate client src/main.ts"
