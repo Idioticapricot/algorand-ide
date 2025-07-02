@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Send, RefreshCw, ExternalLink, Copy, Loader2 } from "lucide-react"
+import { X, Send, RefreshCw, ExternalLink, Copy, Loader2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface Transaction {
@@ -117,6 +117,26 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
     await fetchBalanceAndTransactions()
     setIsRefreshing(false)
   }
+
+  const handleBackupAccount = () => {
+    if (wallet) {
+      const walletData = {
+        address: wallet.address,
+        mnemonic: wallet.mnemonic,
+        privateKey: wallet.privateKey,
+      };
+      const json = JSON.stringify(walletData, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `algorand_wallet_${wallet.address.substring(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   useEffect(() => {
     if (!wallet?.algoPrice) {
@@ -257,6 +277,14 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
               disabled={isRefreshing}
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1 border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d]"
+              onClick={handleBackupAccount}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Backup Account
             </Button>
           </div>
         </div>
