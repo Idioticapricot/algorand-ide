@@ -31,15 +31,18 @@ interface Wallet {
 
 // Utility to recursively fetch file structure from WebContainer
 async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
+  console.log(`fetchWebContainerFileTree called for dir: ${dir}, template: ${selectedTemplate}`);
   const tree: any = {};
   let entries = await fs.readdir(dir, { withFileTypes: true });
 
   // Filter out node_modules and .py files if TealScript is selected
   entries = entries.filter((entry: any) => {
     if (entry.name === "node_modules") {
+      console.log(`Filtering out node_modules: ${entry.name}`);
       return false; // Always hide node_modules
     }
     if (selectedTemplate === "TealScript" && entry.isFile() && entry.name.endsWith(".py")) {
+      console.log(`Filtering out Python file for TealScript: ${entry.name}`);
       return false; // Hide .py files for TealScript template
     }
     return true;
@@ -277,6 +280,8 @@ export default function AlgorandIDE() {
   useEffect(() => {
     if (!webcontainer) return;
 
+    console.log("Setting up file system watcher for template:", selectedTemplate);
+
     // Initial fetch
     updateFileStructureFromWebContainer();
 
@@ -293,7 +298,7 @@ export default function AlgorandIDE() {
     return () => {
       watcher.close();
     };
-  }, [webcontainer, updateFileStructureFromWebContainer]);
+  }, [webcontainer, updateFileStructureFromWebContainer, selectedTemplate]);
 
   // File operations
   const createFile = async (filePath: string) => {
