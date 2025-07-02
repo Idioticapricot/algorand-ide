@@ -75,9 +75,9 @@ export function Sidebar({
     setContextMenu({ x: e.clientX, y: e.clientY, path })
   }
 
-  const createFile = (path: string, name: string) => {
+  const createFile = async (path: string, name: string) => {
     const fullPath = path ? `${path}/${name}` : name
-    onCreateFile(fullPath)
+    await onCreateFile(fullPath)
     setShowCreateDialog(null)
     setNewItemName("")
   }

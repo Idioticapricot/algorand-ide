@@ -25,6 +25,30 @@ interface Wallet {
   algoPrice: number
 }
 
+// Utility to recursively fetch file structure from WebContainer
+async function fetchWebContainerFileTree(fs: any, dir = ".") {
+  const tree: any = {};
+  let entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Sort: directories first, then files, then by name
+  entries = entries.sort((a: any, b: any) => {
+    if (a.kind === b.kind) return a.name.localeCompare(b.name);
+    return a.kind === "directory" ? -1 : 1;
+  });
+
+  for (const entry of entries) {
+    const entryName = entry.name || entry;
+    const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
+    console.log(`Entry: ${entryName}, Kind: ${entry.kind}, FullPath: ${fullPath}`);
+    if (entry.kind === "directory") {
+      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath) };
+    } else {
+      tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
+    }
+  }
+  return tree;
+}
+
 export default function AlgorandIDE() {
   // Template state
   const [selectedTemplate, setSelectedTemplate] = useState("PyTeal")
@@ -211,47 +235,72 @@ export default function AlgorandIDE() {
     }
   }
 
+  // Fetch and update file structure from WebContainer, wrapped in useCallback
+  const updateFileStructureFromWebContainer = useCallback(async () => {
+    if (!webcontainer) return;
+    const tree = await fetchWebContainerFileTree(webcontainer.fs);
+    setCurrentFiles(tree);
+
+    // This logic can be simplified or memoized if performance becomes an issue
+    const getAllFileContents = (tree: any, currentPath: string = '') => {
+      let contents: Record<string, string> = {};
+      for (const key in tree) {
+        const newPath = currentPath ? `${currentPath}/${key}` : key;
+        if (tree[key].file) {
+          contents[newPath] = tree[key].file.contents;
+        } else if (tree[key].directory) {
+          contents = { ...contents, ...getAllFileContents(tree[key].directory, newPath) };
+        }
+      }
+      return contents;
+    };
+    setFileContents(getAllFileContents(tree));
+  }, [webcontainer]);
+
+  // Set up file system watcher for real-time updates
+  useEffect(() => {
+    if (!webcontainer) return;
+
+    // Initial fetch
+    updateFileStructureFromWebContainer();
+
+    const watcher = webcontainer.fs.watch(".", { recursive: true }, (event, filename) => {
+      console.log(`File change detected: ${event} on ${filename}`);
+      updateFileStructureFromWebContainer();
+    });
+
+    return () => {
+      watcher.close();
+    };
+  }, [webcontainer, updateFileStructureFromWebContainer]);
+
+  // File operations
   const createFile = async (filePath: string) => {
-    if (!webcontainer) return
-    await webcontainer.fs.writeFile(filePath, "")
-    setFileContents((prev) => ({ ...prev, [filePath]: "" }))
-    setOpenFiles((prev) => [...prev, filePath])
-    setActiveFile(filePath)
-  }
+    if (!webcontainer) return;
+    await webcontainer.fs.writeFile(filePath, "");
+    // No need to call updateFileStructureFromWebContainer manually, watcher will pick it up
+    setOpenFiles((prev) => [...prev, filePath]);
+    setActiveFile(filePath);
+  };
 
   const renameFile = async (oldPath: string, newPath: string) => {
-    if (!webcontainer) return
-    const content = await webcontainer.fs.readFile(oldPath, "utf-8")
-    await webcontainer.fs.rm(oldPath)
-    await webcontainer.fs.writeFile(newPath, content)
-
-    setFileContents((prev) => {
-      const newContents = { ...prev }
-      delete newContents[oldPath]
-      newContents[newPath] = content
-      return newContents
-    })
-
-    setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)))
+    if (!webcontainer) return;
+    const content = await webcontainer.fs.readFile(oldPath, "utf-8");
+    await webcontainer.fs.rm(oldPath);
+    await webcontainer.fs.writeFile(newPath, content);
+    // Watcher will handle the update
+    setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
     if (activeFile === oldPath) {
-      setActiveFile(newPath)
+      setActiveFile(newPath);
     }
-  }
+  };
 
   const deleteFile = async (filePath: string) => {
-    if (!webcontainer) return
-    await webcontainer.fs.rm(filePath)
-    setFileContents((prev) => {
-      const newContents = { ...prev }
-      delete newContents[filePath]
-      return newContents
-    })
-    closeFile(filePath)
-  }
-
-  
-
-  
+    if (!webcontainer) return;
+    await webcontainer.fs.rm(filePath);
+    // Watcher will handle the update
+    closeFile(filePath);
+  };
 
   const handleInstall = async () => {
     if (!webcontainer) {
