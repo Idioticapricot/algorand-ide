@@ -702,12 +702,19 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, templateNa
         defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      const result = await appFactory.call({
-        method: selectedMethod.name,
-        methodArgs: executeArgs,
-        sender: { addr: creator.address, signer: algosdk.makeBasicAccountTransactionSigner(account) },
-        appId: selectedContract.appId,
+      const appClient = algorandClient.client.getAppClientById({
+        appSpec,
+        appId : selectedContract.appId
       });
+
+
+      const createAppParams = await appFactory.params.create({
+        method: selectedMethod.name,
+        args: executeArgs,
+        sender: creator.address, 
+        signer: algosdk.makeBasicAccountTransactionSigner(account)
+      });
+      const result = await appClient.send.call({method: selectedMethod.name, args: [createAppParams]})
 
       toast({ title: "Method executed successfully!", description: `Result: ${result.return}` });
     } catch (error: any) {
