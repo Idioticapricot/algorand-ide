@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  
   headers: async () => [
     {
       source: '/(.*)',

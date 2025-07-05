@@ -6,7 +6,7 @@ export const puyaTsfiles = {
 export default class HelloWorldContract extends BaseContract {
   public approvalProgram(): boolean {
     const name = String(op.Txn.applicationArgs(0))
-    log("Hello," + ${name})
+    log("Hello," + name)
     return true
   }
 }`,

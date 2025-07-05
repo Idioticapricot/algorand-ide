@@ -89,7 +89,7 @@ async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: s
   return tree;
 }
 
-export default function AlgorandIDE({ initialFiles, selectedTemplate, templateName }: { initialFiles: any, selectedTemplate: string, templateName: string }) {
+export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string }) {
   const [currentFiles, setCurrentFiles] = useState<any>(initialFiles);
 
   const getAllFilePaths = (tree: any, currentPath: string = '') => {
@@ -746,7 +746,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, templateNa
           </div>
           <span className="font-medium" style={{ color: "var(--text-color)" }}>Algokit IDE</span>
         </div>
-        <div className="font-medium text-sm" style={{ color: "var(--text-color)" }}>{templateName}</div>
+        <div className="font-medium text-sm" style={{ color: "var(--text-color)" }}>{selectedTemplateName}</div>
         <div className="flex items-center gap-2">
           {wallet && wallet.address ? (
             <button
