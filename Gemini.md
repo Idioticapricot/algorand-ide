@@ -33,5 +33,7 @@ create /play/[slug_name] route that should fetch the files.ts from the following
 
 https://raw.githubusercontent.com/nickthelegend/algorand-ide-templates/refs/heads/main/playground/hello_world/files.ts
 
-the files.ts is the file that should be passed for the Algorand-IDE to load the playground template
+the files.ts is the file that should be passed for the Algorand-IDE to load the playground template , dont make changes to existing files.ts , i want to fetch the files.ts from the user github and use it to pass into the ide component
+
+so basically users will click playground templates, which will launch the templates from the github, the past implementations should be the same for puyaPy, teal etc it should not be touched
 
