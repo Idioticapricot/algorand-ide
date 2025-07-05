@@ -588,6 +588,11 @@ export default function AlgorandIDE() {
       const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
       const appSpec = JSON.parse(fileContent);
 
+      let contractSpec = appSpec;
+      if (filename.endsWith('.arc32.json') && appSpec.contract) {
+        contractSpec = appSpec.contract;
+      }
+
       if(!wallet){
         throw new Error("Wallet not connected");
       }
@@ -633,7 +638,7 @@ export default function AlgorandIDE() {
         txId,
         artifact: filename,
         time: Date.now(),
-        methods: appSpec.contract.methods,
+        methods: contractSpec.methods,
       };
       const prev = JSON.parse(localStorage.getItem("deployedContracts") || "[]");
       const updated = [deployed, ...prev];
