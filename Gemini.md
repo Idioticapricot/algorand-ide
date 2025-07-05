@@ -1,46 +1,37 @@
-/pyteal - should contain the /app/page.tsx with the files.ts loaded
-/tealscript  - should contain the /app/page.tsx with the tealScriptFiles.ts loaded
-/ - this should be edited with the navigation for different templates ... it should have 4 Main templates show them on the screen "Pyteal", "TealScript", "PuyaPy", "PuyaTs" , the main website should have the same style as the other pages, please make sure it has
-/puyapy - should contain the /app/page.tsx with the puyaPyfiles.ts loaded
-/puyats - should contain the /app/page.tsx with the puyaTsfiles.ts loaded
+/playground: should show the multiple templates available
 
+Create /playground route show the multiple templates available get them from this json 
+https://raw.githubusercontent.com/nickthelegend/algorand-ide-templates/refs/heads/main/TEMPLATES.json
 
-
-
-
-puyaPyfiles.ts
-
-contract.py [PuyaPy File]
-
-from algopy import Contract, Txn, log
-
-
-class HelloWorldContract(Contract):
-    def approval_program(self) -> bool:
-        name = Txn.application_args(0)
-        log(b"Hello, " + name)
-        return True
-
-    def clear_state_program(self) -> bool:
-        return True
-
-
-
-/// puyaTsFiles.ts 
-
-helloworld.algo.ts
-import { BaseContract, log, op } from '@algorandfoundation/algorand-typescript'
-
-export default class HelloWorldContract extends BaseContract {
-  public approvalProgram(): boolean {
-    const name = String(op.Txn.applicationArgs(0))
-    log(`Hello, ${name}`)
-    return true
-  }
+This is the example of the slug and the 
+{
+    "hello_world" : {
+        "name": "Hello World",
+        "desc": "Hello world program with PyTeal/Python.",
+        "level" : "Beginner",
+        "lang" : "Pyteal"
+    },
+    "nft_marketplace" : {
+        "name": "NFT Marketplace",
+        "desc": "A smart contract for creating and managing an NFT marketplace.",
+        "level" : "Intermediate",
+        "lang" : "Pyteal"
+    },
+    "tok_minter" : {
+        "name": "Token Minter",
+        "desc": "A smart contract for minting and managing fungible tokens.",
+        "level" : "Intermediate",
+        "lang" : "Pyteal"
+    }
 }
 
-//include the package.json also in the puyaTsFiles.ts
+
+/play/[slug_name]: get the template slug and pass it in here
 
 
+create /play/[slug_name] route that should fetch the files.ts from the following url
 
-please implement the changes above
+https://raw.githubusercontent.com/nickthelegend/algorand-ide-templates/refs/heads/main/playground/hello_world/files.ts
+
+the files.ts is the file that should be passed for the Algorand-IDE to load the playground template
+
