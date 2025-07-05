@@ -1,39 +1,8 @@
-/playground: should show the multiple templates available
+i want to add another param to the Algorand-IDE compoenent which is hte name of the template 
 
-Create /playground route show the multiple templates available get them from this json 
-https://raw.githubusercontent.com/nickthelegend/algorand-ide-templates/refs/heads/main/TEMPLATES.json
-
-This is the example of the slug and the 
-{
-    "hello_world" : {
-        "name": "Hello World",
-        "desc": "Hello world program with PyTeal/Python.",
-        "level" : "Beginner",
-        "lang" : "Pyteal"
-    },
-    "nft_marketplace" : {
-        "name": "NFT Marketplace",
-        "desc": "A smart contract for creating and managing an NFT marketplace.",
-        "level" : "Intermediate",
-        "lang" : "Pyteal"
-    },
-    "tok_minter" : {
-        "name": "Token Minter",
-        "desc": "A smart contract for minting and managing fungible tokens.",
-        "level" : "Intermediate",
-        "lang" : "Pyteal"
-    }
-}
+it should pass the name of the template 
 
 
-/play/[slug_name]: get the template slug and pass it in here
+it should show what template is it loading please implement that
 
-
-create /play/[slug_name] route that should fetch the files.ts from the following url
-
-https://raw.githubusercontent.com/nickthelegend/algorand-ide-templates/refs/heads/main/playground/hello_world/files.ts
-
-the files.ts is the file that should be passed for the Algorand-IDE to load the playground template , dont make changes to existing files.ts , i want to fetch the files.ts from the user github and use it to pass into the ide component
-
-so basically users will click playground templates, which will launch the templates from the github, the past implementations should be the same for puyaPy, teal etc it should not be touched
-
+cause i am getting templates from local file.ts and the github so they be messy so it will be a best idea to show the name of the template we are loading on to the Algorand-IDE component 

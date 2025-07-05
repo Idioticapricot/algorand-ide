@@ -3,5 +3,5 @@ import { files } from "@/components/files";
 
 
 export default function PyTealIDE() {
-  return <AlgorandIDE initialFiles={files} selectedTemplate="PyTeal" />;
+  return <AlgorandIDE initialFiles={files} selectedTemplate="PyTeal" templateName="PyTeal"/>;
 }

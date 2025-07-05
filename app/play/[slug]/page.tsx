@@ -41,5 +41,5 @@ export default async function PlayPage({ params }: { params: { slug: string } })
   const files = await getTemplateFiles(slug);
   const lang = await getTemplateLang(slug);
 
-  return <AlgorandIDE initialFiles={files} selectedTemplate={lang} />;
+  return <AlgorandIDE initialFiles={files} selectedTemplate={lang} templateName={slug} />;
 }
