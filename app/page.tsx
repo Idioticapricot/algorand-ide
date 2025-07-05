@@ -19,6 +19,17 @@ import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 
 
 
@@ -109,6 +120,10 @@ export default function AlgorandIDE() {
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [activeArtifactFile, setActiveArtifactFile] = useState<string | null>(null);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [deployArgs, setDeployArgs] = useState<any[]>([]);
+  const [currentDeployFilename, setCurrentDeployFilename] = useState<string | null>(null);
+  const [contractArgs, setContractArgs] = useState<any[]>([]);
 
   // Layout state
   const [sidebarWidth, setSidebarWidth] = useState(280)
@@ -558,47 +573,39 @@ export default function AlgorandIDE() {
     };
   }, []);
 
-  // Deploy handler for ArtifactsPanel
-  const deployArtifact = async (filename: string) => {
+  const executeDeploy = async (filename: string, args: (string | number)[]) => {
     if (!webcontainer) return;
-    console.log("deployArtifact called with filename:", filename);
+    console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
-      // Read artifact file from WebContainer
       const artifactPath = `artifacts/${filename}`;
-      console.log("Artifact path:", artifactPath);
       const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
-      console.log("File content:", fileContent);
       const appSpec = JSON.parse(fileContent);
-      console.log("Parsed appSpec:", appSpec);
+
       if(!wallet){
-        throw Error
+        throw new Error("Wallet not connected");
       }
-      const account = algosdk.mnemonicToSecretKey(wallet?.mnemonic)
+      const account = algosdk.mnemonicToSecretKey(wallet.mnemonic);
+      const creator = wallet;
 
-      // Get deployer account (mock or real logic)
-      const creator = wallet || { address: "", mnemonic: "" };
-      console.log("Creator wallet:", creator);
-      if (!creator.address) throw new Error("No deployer wallet/account found");
-
-      // Import AlgorandClient from algokit
       const { AlgorandClient } = await import("@algorandfoundation/algokit-utils");
       const algorandClient = AlgorandClient.fromConfig({
-        algodConfig: {
-          server: "https://testnet-api.algonode.cloud",
-          token: "",
-        },
-        indexerConfig: {
-          server: "https://testnet-idx.algonode.cloud",
-          token: "",
-        },
+        algodConfig: { server: "https://testnet-api.algonode.cloud", token: "" },
+        indexerConfig: { server: "https://testnet-idx.algonode.cloud", token: "" },
       });
 
       const appFactory = algorandClient.client.getAppFactory({
         appSpec,
-        defaultSender: creator.address,defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
+        defaultSender: creator.address,
+        defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      const deployResult = await appFactory.send.create({sender: account.addr.toString() , signer:algosdk.makeBasicAccountTransactionSigner(account) , method: "createApplication",args: []})
+      const deployResult = await appFactory.send.create({
+          sender: account.addr,
+          signer: algosdk.makeBasicAccountTransactionSigner(account),
+          method: "createApplication",
+          args: args
+      });
+
       console.log("Deploy result:", deployResult);
       let appId = 'unknown';
       let txId = 'unknown';
@@ -620,12 +627,47 @@ export default function AlgorandIDE() {
         artifact: filename,
         time: Date.now(),
       };
-      // Store in localStorage
       const prev = JSON.parse(localStorage.getItem("deployedContracts") || "[]");
       const updated = [deployed, ...prev];
       localStorage.setItem("deployedContracts", JSON.stringify(updated));
       setDeployedContracts(updated);
       toast({ title: "Deployment completed!", description: `App ID: ${deployed.appId}` });
+    } catch (error: any) {
+      console.error("Deploy artifact failed:", error);
+      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+    } finally {
+      setIsDeployModalOpen(false);
+    }
+  };
+
+  const deployArtifact = async (filename: string) => {
+    if (!webcontainer) return;
+    console.log("deployArtifact called with filename:", filename);
+    try {
+      const artifactPath = `artifacts/${filename}`;
+      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      const appSpec = JSON.parse(fileContent);
+
+      let contractSpec = appSpec;
+      if (filename.endsWith('.arc32.json') && appSpec.contract) {
+        contractSpec = appSpec.contract;
+      }
+
+      const createMethod = contractSpec.methods.find((m: any) => m.name === "createApplication");
+
+      if (createMethod && createMethod.args && createMethod.args.length > 0) {
+        setCurrentDeployFilename(filename);
+        setContractArgs(createMethod.args);
+        const initialArgs = createMethod.args.map((arg: any) => {
+            if (arg.type.includes('uint')) return 0;
+            if (arg.type === 'address') return wallet?.address || '';
+            return '';
+        });
+        setDeployArgs(initialArgs);
+        setIsDeployModalOpen(true);
+      } else {
+        await executeDeploy(filename, []);
+      }
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
@@ -794,6 +836,46 @@ export default function AlgorandIDE() {
           </div>
         </div>
       </div>
+      <Dialog open={isDeployModalOpen} onOpenChange={setIsDeployModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deploy Contract: {currentDeployFilename}</DialogTitle>
+            <DialogDescription>
+              Please provide the arguments for the `createApplication` method.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {contractArgs.map((arg, index) => (
+              <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
+                <Label htmlFor={`arg-${index}`} className="text-right">
+                  {arg.name} ({arg.type})
+                </Label>
+                <Input
+                  id={`arg-${index}`}
+                  value={deployArgs[index] || ''}
+                  onChange={(e) => {
+                    const newArgs = [...deployArgs];
+                    const value = arg.type.startsWith('uint') ? Number(e.target.value) : e.target.value;
+                    newArgs[index] = value;
+                    setDeployArgs(newArgs);
+                  }}
+                  className="col-span-3"
+                  type={arg.type.startsWith('uint') ? 'number' : 'text'}
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              if (currentDeployFilename) {
+                executeDeploy(currentDeployFilename, deployArgs);
+              }
+            }}>
+              Deploy
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
