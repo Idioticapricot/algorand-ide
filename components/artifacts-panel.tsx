@@ -15,7 +15,7 @@ export function ArtifactsPanel({ webcontainer, onDeploy }: ArtifactsPanelProps) 
       if (!webcontainer) return;
       try {
         const files = await webcontainer.fs.readdir("artifacts");
-        setArtifactFiles(files.filter((file: string) => file !== "." && file !== ".."));
+        setArtifactFiles(files.filter((file: string) => file.endsWith('.arc32.json') || file.endsWith('.arc56.json')));
       } catch (error) {
         console.error("Error reading artifacts directory:", error);
         setArtifactFiles([]);
