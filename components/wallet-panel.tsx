@@ -344,7 +344,7 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
             <Button 
               variant="ghost" 
               className="text-xs text-[#569cd6]"
-              onClick={() => window.open(`https://${currentNetwork.explorer}/address/${wallet.address}`, '_blank')}
+              onClick={() => window.open(`https://lora.algokit.io/testnet/account/${wallet.address}`, '_blank')}
             >
               <ExternalLink className="w-3 h-3 mr-1" />
               View on AlgoExplorer

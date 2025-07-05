@@ -125,6 +125,11 @@ export default function AlgorandIDE() {
   const [currentDeployFilename, setCurrentDeployFilename] = useState<string | null>(null);
   const [contractArgs, setContractArgs] = useState<any[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isMethodsModalOpen, setIsMethodsModalOpen] = useState(false);
+  const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedMethod, setSelectedMethod] = useState<any>(null);
+  const [executeArgs, setExecuteArgs] = useState<any[]>([]);
 
   // Layout state
   const [sidebarWidth, setSidebarWidth] = useState(280)
@@ -628,6 +633,7 @@ export default function AlgorandIDE() {
         txId,
         artifact: filename,
         time: Date.now(),
+        methods: appSpec.contract.methods,
       };
       const prev = JSON.parse(localStorage.getItem("deployedContracts") || "[]");
       const updated = [deployed, ...prev];
@@ -674,6 +680,49 @@ export default function AlgorandIDE() {
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+    }
+  };
+
+  const executeMethod = async () => {
+    if (!webcontainer || !selectedContract || !selectedMethod) return;
+    setIsDeploying(true);
+    try {
+      const artifactPath = `artifacts/${selectedContract.artifact}`;
+      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      const appSpec = JSON.parse(fileContent);
+
+      if(!wallet){
+        throw new Error("Wallet not connected");
+      }
+      const account = algosdk.mnemonicToSecretKey(wallet.mnemonic);
+      const creator = wallet;
+
+      const { AlgorandClient } = await import("@algorandfoundation/algokit-utils");
+      const algorandClient = AlgorandClient.fromConfig({
+        algodConfig: { server: "https://testnet-api.algonode.cloud", token: "" },
+        indexerConfig: { server: "https://testnet-idx.algonode.cloud", token: "" },
+      });
+
+      const appFactory = algorandClient.client.getAppFactory({
+        appSpec,
+        defaultSender: creator.address,
+        defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
+      });
+
+      const result = await appFactory.call({
+        method: selectedMethod.name,
+        methodArgs: executeArgs,
+        sender: { addr: creator.address, signer: algosdk.makeBasicAccountTransactionSigner(account) },
+        appId: selectedContract.appId,
+      });
+
+      toast({ title: "Method executed successfully!", description: `Result: ${result.return}` });
+    } catch (error: any) {
+      console.error("Method execution failed:", error);
+      toast({ title: "Method execution failed", description: error.message || String(error), variant: "destructive" });
+    } finally {
+      setIsDeploying(false);
+      setIsExecuteModalOpen(false);
     }
   };
 
@@ -773,7 +822,13 @@ export default function AlgorandIDE() {
               ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
                 <ArtifactsPanel webcontainer={webcontainer} onDeploy={deployArtifact} />
               ) : sidebarSection === "programs" ? (
-                <ProgramsPanel deployedContracts={deployedContracts} />
+                <ProgramsPanel
+                  deployedContracts={deployedContracts}
+                  onContractSelect={(contract) => {
+                    setSelectedContract(contract);
+                    setIsMethodsModalOpen(true);
+                  }}
+                />
               ) : sidebarSection === "settings" ? (
                 <SettingsPanel />
               ) : (
@@ -882,6 +937,71 @@ export default function AlgorandIDE() {
                 }}>
                   Deploy
                 </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMethodsModalOpen} onOpenChange={setIsMethodsModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contract Methods</DialogTitle>
+            <DialogDescription>
+              Select a method to execute for contract: {selectedContract?.appId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedContract?.methods.map((method: any) => (
+              <div key={method.name} className="flex items-center justify-between">
+                <span>{method.name}</span>
+                <Button onClick={() => {
+                  setSelectedMethod(method);
+                  setExecuteArgs(method.args.map(() => ''));
+                  setIsExecuteModalOpen(true);
+                  setIsMethodsModalOpen(false);
+                }}>Execute</Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExecuteModalOpen} onOpenChange={setIsExecuteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Execute Method: {selectedMethod?.name}</DialogTitle>
+            <DialogDescription>
+              Please provide the arguments for this method.
+            </DialogDescription>
+          </DialogHeader>
+          {isDeploying ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 py-4">
+                {selectedMethod?.args.map((arg: any, index: number) => (
+                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
+                    <Label htmlFor={`exec-arg-${index}`} className="text-right">
+                      {arg.name} ({arg.type})
+                    </Label>
+                    <Input
+                      id={`exec-arg-${index}`}
+                      value={executeArgs[index] || ''}
+                      onChange={(e) => {
+                        const newArgs = [...executeArgs];
+                        newArgs[index] = e.target.value;
+                        setExecuteArgs(newArgs);
+                      }}
+                      className="col-span-3"
+                    />
+                  </div>
+                ))}
+              </div>
+              <DialogFooter>
+                <Button onClick={executeMethod}>Execute</Button>
               </DialogFooter>
             </>
           )}
