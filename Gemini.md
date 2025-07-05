@@ -1,294 +1,46 @@
-///Below is ARC56 .json contract
-
-
-{
-  "name": "BadgeContract",
-  "desc": "",
-  "methods": [
-    {
-      "name": "createApplication",
-      "args": [
-        {
-          "name": "creatorAddress",
-          "type": "address"
-        },
-        {
-          "name": "tokenName",
-          "type": "string"
-        },
-        {
-          "name": "assetID",
-          "type": "uint64"
-        },
-        {
-          "name": "numClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "maxClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "expiryDate",
-          "type": "uint64"
-        },
-        {
-          "name": "amountToSend",
-          "type": "uint64"
-        },
-        {
-          "name": "amountRemaining",
-          "type": "uint64"
-        }
-      ],
-      "returns": {
-        "type": "void"
-      },
-      "actions": {
-        "create": [
-          "NoOp"
-        ],
-        "call": []
-      }
-    },
-    {
-      "name": "createAsset",
-      "args": [
-        {
-          "name": "totalTickets",
-          "type": "uint64"
-        },
-        {
-          "name": "assetUrl",
-          "type": "string"
-        }
-      ],
-      "returns": {
-        "type": "void"
-      },
-      "actions": {
-        "create": [],
-        "call": [
-          "NoOp"
-        ]
-      }
-    },
-    {
-      "name": "claimDrop",
-      "args": [],
-      "returns": {
-        "type": "void"
-      },
-      "actions": {
-        "create": [],
-        "call": [
-          "NoOp"
-        ]
-      }
-    }
-  ], ........ETC
+/pyteal - should contain the /app/page.tsx with the files.ts loaded
+/tealscript  - should contain the /app/page.tsx with the tealScriptFiles.ts loaded
+/ - this should be edited with the navigation for different templates ... it should have 4 Main templates show them on the screen "Pyteal", "TealScript", "PuyaPy", "PuyaTs" , the main website should have the same style as the other pages, please make sure it has
+/puyapy - should contain the /app/page.tsx with the puyaPyfiles.ts loaded
+/puyats - should contain the /app/page.tsx with the puyaTsfiles.ts loaded
 
 
 
-///Below is ARC32 Contract ...
 
 
-  { "contract": {
-    "name": "AirdropContract",
-    "desc": "",
-    "methods": [
-      {
-        "name": "createApplication",
-        "args": [
-          {
-            "name": "creatorAddress",
-            "type": "address"
-          },
-          {
-            "name": "tokenName",
-            "type": "string"
-          },
-          {
-            "name": "assetID",
-            "type": "uint64"
-          },
-          {
-            "name": "numClaims",
-            "type": "uint64"
-          },
-          {
-            "name": "maxClaims",
-            "type": "uint64"
-          },
-          {
-            "name": "expiryDate",
-            "type": "uint64"
-          },
-          {
-            "name": "amountToSend",
-            "type": "uint64"
-          },
-          {
-            "name": "amountRemaining",
-            "type": "uint64"
-          }
-        ],
-        "returns": {
-          "type": "void"
-        }
-      },
-      {
-        "name": "createAsset",
-        "args": [
-          {
-            "name": "totalTickets",
-            "type": "uint64"
-          },
-          {
-            "name": "assetUrl",
-            "type": "string"
-          }
-        ],
-        "returns": {
-          "type": "void"
-        }
-      },
-      {
-        "name": "claimDrop",
-        "args": [],
-        "returns": {
-          "type": "void"
-        }
-      }
-    ]
+puyaPyfiles.ts
+
+contract.py [PuyaPy File]
+
+from algopy import Contract, Txn, log
+
+
+class HelloWorldContract(Contract):
+    def approval_program(self) -> bool:
+        name = Txn.application_args(0)
+        log(b"Hello, " + name)
+        return True
+
+    def clear_state_program(self) -> bool:
+        return True
+
+
+
+/// puyaTsFiles.ts 
+
+helloworld.algo.ts
+import { BaseContract, log, op } from '@algorandfoundation/algorand-typescript'
+
+export default class HelloWorldContract extends BaseContract {
+  public approvalProgram(): boolean {
+    const name = String(op.Txn.applicationArgs(0))
+    log(`Hello, ${name}`)
+    return true
   }
 }
 
-
-
-///Below is ARC4 Contract
-
-
-{
-  "name": "AirdropContract",
-  "desc": "",
-  "methods": [
-    {
-      "name": "createApplication",
-      "args": [
-        {
-          "name": "creatorAddress",
-          "type": "address"
-        },
-        {
-          "name": "tokenName",
-          "type": "string"
-        },
-        {
-          "name": "assetID",
-          "type": "uint64"
-        },
-        {
-          "name": "numClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "maxClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "expiryDate",
-          "type": "uint64"
-        },
-        {
-          "name": "amountToSend",
-          "type": "uint64"
-        },
-        {
-          "name": "amountRemaining",
-          "type": "uint64"
-        }
-      ],
-      "returns": {
-        "type": "void"
-      }
-    },
-    {
-      "name": "createAsset",
-      "args": [
-        {
-          "name": "totalTickets",
-          "type": "uint64"
-        },
-        {
-          "name": "assetUrl",
-          "type": "string"
-        }
-      ],
-      "returns": {
-        "type": "void"
-      }
-    },
-    {
-      "name": "claimDrop",
-      "args": [],
-      "returns": {
-        "type": "void"
-      }
-    }
-  ]
-}
+//include the package.json also in the puyaTsFiles.ts
 
 
 
-Above are the examples of how a json is..
-So when a user clicks deploy button deploy artifact is called i want to get the name of the file if the file has .arc56.json at the end .arc32.json at the end .arc4.json at the end...
-
-
-and then store then while deploying use the createApplication method ...  
-
-const deployResult = await appFactory.send.create({sender: account.addr.toString() , signer:algosdk.makeBasicAccountTransactionSigner(account) , method: "createApplication",args: []}) 
-
-Ask the user ARGS if the smart contract contains args Example the below method contains the following args so ask the user, show a modal with the number of args to pass and the textfield to enter .. and deploy button at the bottom of the modal 
-
-{
-      "name": "createApplication",
-      "args": [
-        {
-          "name": "creatorAddress",
-          "type": "address"
-        },
-        {
-          "name": "tokenName",
-          "type": "string"
-        },
-        {
-          "name": "assetID",
-          "type": "uint64"
-        },
-        {
-          "name": "numClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "maxClaims",
-          "type": "uint64"
-        },
-        {
-          "name": "expiryDate",
-          "type": "uint64"
-        },
-        {
-          "name": "amountToSend",
-          "type": "uint64"
-        },
-        {
-          "name": "amountRemaining",
-          "type": "uint64"
-        }
-      ],
-      "returns": {
-        "type": "void"
-      }
-    },
-
+please implement the changes above
