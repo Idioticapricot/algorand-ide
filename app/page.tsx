@@ -124,6 +124,7 @@ export default function AlgorandIDE() {
   const [deployArgs, setDeployArgs] = useState<any[]>([]);
   const [currentDeployFilename, setCurrentDeployFilename] = useState<string | null>(null);
   const [contractArgs, setContractArgs] = useState<any[]>([]);
+  const [isDeploying, setIsDeploying] = useState(false);
 
   // Layout state
   const [sidebarWidth, setSidebarWidth] = useState(280)
@@ -575,6 +576,7 @@ export default function AlgorandIDE() {
 
   const executeDeploy = async (filename: string, args: (string | number)[]) => {
     if (!webcontainer) return;
+    setIsDeploying(true);
     console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
       const artifactPath = `artifacts/${filename}`;
@@ -636,6 +638,7 @@ export default function AlgorandIDE() {
       console.error("Deploy artifact failed:", error);
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     } finally {
+      setIsDeploying(false);
       setIsDeployModalOpen(false);
     }
   };
@@ -844,36 +847,44 @@ export default function AlgorandIDE() {
               Please provide the arguments for the `createApplication` method.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {contractArgs.map((arg, index) => (
-              <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
-                <Label htmlFor={`arg-${index}`} className="text-right">
-                  {arg.name} ({arg.type})
-                </Label>
-                <Input
-                  id={`arg-${index}`}
-                  value={deployArgs[index] || ''}
-                  onChange={(e) => {
-                    const newArgs = [...deployArgs];
-                    const value = arg.type.startsWith('uint') ? Number(e.target.value) : e.target.value;
-                    newArgs[index] = value;
-                    setDeployArgs(newArgs);
-                  }}
-                  className="col-span-3"
-                  type={arg.type.startsWith('uint') ? 'number' : 'text'}
-                />
+          {isDeploying ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 py-4">
+                {contractArgs.map((arg, index) => (
+                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
+                    <Label htmlFor={`arg-${index}`} className="text-right">
+                      {arg.name} ({arg.type})
+                    </Label>
+                    <Input
+                      id={`arg-${index}`}
+                      value={deployArgs[index] || ''}
+                      onChange={(e) => {
+                        const newArgs = [...deployArgs];
+                        const value = arg.type.startsWith('uint') ? Number(e.target.value) : e.target.value;
+                        newArgs[index] = value;
+                        setDeployArgs(newArgs);
+                      }}
+                      className="col-span-3"
+                      type={arg.type.startsWith('uint') ? 'number' : 'text'}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => {
-              if (currentDeployFilename) {
-                executeDeploy(currentDeployFilename, deployArgs);
-              }
-            }}>
-              Deploy
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button onClick={() => {
+                  if (currentDeployFilename) {
+                    executeDeploy(currentDeployFilename, deployArgs);
+                  }
+                }}>
+                  Deploy
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
