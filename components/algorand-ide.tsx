@@ -33,6 +33,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { TransactionBuilder } from "@/components/transaction-builder"
 
 
 
@@ -935,7 +937,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, templateNa
       </Dialog>
 
       <Dialog open={isMethodsModalOpen} onOpenChange={setIsMethodsModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Contract Methods</DialogTitle>
             <DialogDescription>
@@ -944,14 +946,36 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, templateNa
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {selectedContract?.methods.map((method: any) => (
-              <div key={method.name} className="flex items-center justify-between">
-                <span>{method.name}</span>
-                <Button onClick={() => {
-                  setSelectedMethod(method);
-                  setExecuteArgs(method.args.map(() => ''));
-                  setIsExecuteModalOpen(true);
-                  setIsMethodsModalOpen(false);
-                }}>Execute</Button>
+              <div key={method.name} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-medium">{method.name}</span>
+                    <Badge className="text-xs border border-input bg-background">
+                      {method.args.length} args
+                    </Badge>
+                  </div>
+                  <Button onClick={() => {
+                    setSelectedMethod(method);
+                    setExecuteArgs(method.args.map(() => ''));
+                    setIsExecuteModalOpen(true);
+                    setIsMethodsModalOpen(false);
+                  }}>
+                    Execute
+                  </Button>
+                </div>
+                {method.args.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium">Arguments:</span>
+                    <div className="mt-1 space-y-1">
+                      {method.args.map((arg: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="font-mono text-xs">• {arg.name}:</span>
+                          <span className="text-xs">{arg.type}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -959,42 +983,23 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, templateNa
       </Dialog>
 
       <Dialog open={isExecuteModalOpen} onOpenChange={setIsExecuteModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Execute Method: {selectedMethod?.name}</DialogTitle>
+            <DialogTitle>Transaction Builder</DialogTitle>
             <DialogDescription>
-              Please provide the arguments for this method.
+              Build and execute transactions for your smart contract
             </DialogDescription>
           </DialogHeader>
-          {isDeploying ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-4 py-4">
-                {selectedMethod?.args.map((arg: any, index: number) => (
-                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
-                    <Label htmlFor={`exec-arg-${index}`} className="text-right">
-                      {arg.name} ({arg.type})
-                    </Label>
-                    <Input
-                      id={`exec-arg-${index}`}
-                      value={executeArgs[index] || ''}
-                      onChange={(e) => {
-                        const newArgs = [...executeArgs];
-                        newArgs[index] = e.target.value;
-                        setExecuteArgs(newArgs);
-                      }}
-                      className="col-span-3"
-                    />
-                  </div>
-                ))}
-              </div>
-              <DialogFooter>
-                <Button onClick={executeMethod}>Execute</Button>
-              </DialogFooter>
-            </>
+          {selectedContract && selectedMethod && (
+            <TransactionBuilder
+              contract={selectedContract}
+              method={selectedMethod}
+              args={executeArgs}
+              onArgsChange={setExecuteArgs}
+              onExecute={executeMethod}
+              isExecuting={isDeploying}
+              wallet={wallet}
+            />
           )}
         </DialogContent>
       </Dialog>
