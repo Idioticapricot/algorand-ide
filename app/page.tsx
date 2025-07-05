@@ -625,7 +625,7 @@ export default function AlgorandIDE() {
       const updated = [deployed, ...prev];
       localStorage.setItem("deployedContracts", JSON.stringify(updated));
       setDeployedContracts(updated);
-      toast({ title: "Deploy succeeded", description: `App ID: ${deployed.appId}` });
+      toast({ title: "Deployment completed!", description: `App ID: ${deployed.appId}` });
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
