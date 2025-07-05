@@ -1,6 +1,8 @@
-import AlgorandIDE from "@/components/algorand-ide";
-import { puyaPyfiles } from "@/components/puyaPyfiles";
+"use client"
 
-export default function PuyaPyIDE() {
-  return <AlgorandIDE initialFiles={puyaPyfiles} selectedTemplate="PuyaPy" />;
+import AlgorandIDE from "@/components/algorand-ide"
+import { puyaPyfiles } from "@/components/puyaPyfiles"
+
+export default function PytealPage() {
+  return <AlgorandIDE initialFiles={puyaPyfiles} selectedTemplate="PuyaPy" />
 }

@@ -17,6 +17,9 @@ import { SettingsPanel } from "@/components/settings-panel"
 import { ArtifactFileViewerPanel } from "@/components/artifact-file-viewer-panel"
 import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
+import { puyaPyfiles } from "@/components/puyaPyfiles"
+import { puyaTsfiles } from "@/components/puyaTsfiles"
+
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
 import {
@@ -43,8 +46,8 @@ interface Wallet {
 }
 
 // Utility to recursively fetch file structure from WebContainer
-async function fetchWebContainerFileTree(fs: any, dir = ".") {
-  console.log(`fetchWebContainerFileTree called for dir: ${dir}`);
+async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
+  console.log(`fetchWebContainerFileTree called for dir: ${dir}, template: ${selectedTemplate}`);
   const tree: any = {};
   let entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -53,6 +56,14 @@ async function fetchWebContainerFileTree(fs: any, dir = ".") {
     if (entry.name === "node_modules") {
       console.log(`Ignoring file change in node_modules: ${entry.name}`);
       return false; // Always hide node_modules
+    }
+    if ((selectedTemplate === "TealScript" || selectedTemplate === "PuyaTs") && entry.isFile() && entry.name.endsWith(".py")) {
+      console.log(`Filtering out Python file for ${selectedTemplate}: ${entry.name}`);
+      return false; // Hide .py files for TealScript and PuyaTs templates
+    }
+    if ((selectedTemplate === "Pyteal" || selectedTemplate === "PuyaPy") && entry.isFile() && entry.name.endsWith(".ts")) {
+      console.log(`Filtering out TypeScript file for ${selectedTemplate}: ${entry.name}`);
+      return false; // Hide .ts files for Pyteal and PuyaPy templates
     }
     return true;
   });
@@ -68,7 +79,7 @@ async function fetchWebContainerFileTree(fs: any, dir = ".") {
     const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
 
     if (entry.isDirectory()) {
-      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath, selectedTemplate) };
+      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath,selectedTemplate) };
     } else if (entry.isFile()) {
       tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
     }
@@ -76,7 +87,7 @@ async function fetchWebContainerFileTree(fs: any, dir = ".") {
   return tree;
 }
 
-export default function AlgorandIDE({ initialFiles }: { initialFiles: any }) {
+export default function AlgorandIDE({ initialFiles, selectedTemplate }: { initialFiles: any, selectedTemplate: string }) {
   const [currentFiles, setCurrentFiles] = useState<any>(initialFiles);
 
   const getAllFilePaths = (tree: any, currentPath: string = '') => {
@@ -168,7 +179,7 @@ export default function AlgorandIDE({ initialFiles }: { initialFiles: any }) {
     const initWebContainer = async () => {
       try {
         const webcontainerInstance = await WebContainer.boot();
-        await webcontainerInstance.mount(files);
+        await webcontainerInstance.mount(initialFiles);
         setWebcontainer(webcontainerInstance);
         setIsWebContainerReady(true);
         webcontainerRef.current = webcontainerInstance;
@@ -286,7 +297,7 @@ export default function AlgorandIDE({ initialFiles }: { initialFiles: any }) {
   // Fetch and update file structure from WebContainer, wrapped in useCallback
   const updateFileStructureFromWebContainer = useCallback(async () => {
     if (!webcontainer) return;
-    const tree = await fetchWebContainerFileTree(webcontainer.fs, ".");
+    const tree = await fetchWebContainerFileTree(webcontainer.fs, ".", selectedTemplate);
     setCurrentFiles(tree);
 
     // This logic can be simplified or memoized if performance becomes an issue

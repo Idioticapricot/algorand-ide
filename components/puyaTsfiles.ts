@@ -9,43 +9,27 @@ export default class HelloWorldContract extends BaseContract {
     log(`Hello, ${name}`)
     return true
   }
-}
-`,
+}`,
     },
   },
   "package.json": {
     file: {
       contents: `{
-  "name": "puyats-template",
+  "name": "puyats-example",
   "version": "1.0.0",
-  "description": "PuyaTS Algorand Smart Contract Template",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "install": "npm install",
-    "build": "algorand-typescript compile",
-    "test": "echo \"No tests yet\"",
-    "deploy": "echo \"Deployment not implemented yet\""
+    "build": "algokit compile",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@algorandfoundation/algorand-typescript": "^1.0.0"
+  }
 }`,
-    },
-  },
-  "README.md": {
-    file: {
-      contents: `
-# PuyaTS Template
-
-This project demonstrates how to build Algorand smart contracts using PuyaTS.
-
-## Commands
-
-- `npm install` - Install dependencies
-- `npm run build` - Compile the smart contract
-- `npm run test` - Run tests
-- `npm run deploy` - Deploy to network
-`,
     },
   },
 };
