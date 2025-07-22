@@ -3,6 +3,7 @@
 import { Handle, Position } from "@xyflow/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useEffect } from "react"
 
 interface AlgorandNodeProps {
   data: {
@@ -14,12 +15,29 @@ interface AlgorandNodeProps {
 }
 
 export function AccountNode({ data, selected }: AlgorandNodeProps) {
+  useEffect(() => {
+    if (!data.config) {
+      data.config = {};
+    }
+    if (!data.config.mnemonic) {
+      const storedMnemonic = localStorage.getItem("mnemonic");
+      if (storedMnemonic) {
+        data.config.mnemonic = storedMnemonic;
+      }
+    } else {
+      localStorage.setItem("mnemonic", data.config.mnemonic);
+    }
+  }, [data.config]);
+
   return (
     <div className="relative">
       <Card className={`min-w-[180px] bg-blue-600 border-blue-500 ${selected ? "ring-2 ring-blue-400" : ""}`}>
         <CardContent className="p-3">
           <div className="text-white font-semibold text-sm mb-1">ACCOUNT</div>
           <div className="text-blue-100 text-xs">Algorand Account</div>
+          <div className="text-blue-100 text-xs mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+            Mnemonic: {data.config?.mnemonic ? `${data.config.mnemonic.substring(0, 10)}...` : "Not set"}
+          </div>
           <Badge variant="secondary" className="mt-2 text-xs">
             {data.config?.address ? "Connected" : "New"}
           </Badge>

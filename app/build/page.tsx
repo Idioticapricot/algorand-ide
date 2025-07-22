@@ -10,6 +10,7 @@ import { Code, Zap, Home, Play, Download, Trash2, TerminalIcon, WalletIcon } fro
 import Link from "next/link"
 import { WalletPanel } from "@/components/wallet-panel"
 import algosdk from "algosdk"
+import { generateCode } from "../../lib/code-generator" 
 
 interface Wallet {
   address: string
@@ -172,23 +173,17 @@ export default function BuildPage() {
               {/* Export Button */}
               <Button
                 onClick={() => {
-                  const flowData = {
-                    nodes: nodes,
-                    edges: edges,
-                    type: activeTab,
-                    timestamp: new Date().toISOString(),
-                  }
-                  const dataStr = JSON.stringify(flowData, null, 2)
-                  const dataBlob = new Blob([dataStr], { type: "application/json" })
+                  const generatedCode = generateCode(nodes, edges)
+                  const dataBlob = new Blob([generatedCode], { type: "text/javascript" })
                   const url = URL.createObjectURL(dataBlob)
                   const link = document.createElement("a")
                   link.href = url
-                  link.download = `algoflow-${activeTab}-${Date.now()}.json`
+                  link.download = `algorand-script-${Date.now()}.js`
                   link.click()
                   URL.revokeObjectURL(url)
                   toast({
-                    title: "Flow Exported",
-                    description: "Your flow has been exported as JSON file",
+                    title: "Code Exported",
+                    description: "Your Algorand script has been exported as a .js file",
                     duration: 3000,
                   })
                 }}
