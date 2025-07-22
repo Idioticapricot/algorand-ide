@@ -110,8 +110,5 @@ main().catch(console.error);
 
 This is the output...
 
-i think it may be beacause of i have 2 tabs one is for Smart Contracts and one is for trsactions
 
-
-Remove the tab for Smart COntracts .. i want only transaction please make change like this
 

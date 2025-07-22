@@ -128,6 +128,22 @@ export function KeyRegNode({ data, selected }: AlgorandNodeProps) {
   )
 }
 
+export function AssetFreezeNode({ data, selected }: AlgorandNodeProps) {  // Added for flow builder
+  return (
+    <div className="relative">
+      <Card className={`min-w-[180px] bg-teal-600 border-teal-500 ${selected ? "ring-2 ring-teal-400" : ""}`}>
+        <CardContent className="p-3">
+          <div className="text-white font-semibold text-sm mb-1">ASSET FREEZE</div>
+          <div className="text-teal-100 text-xs">Freeze/Unfreeze ASA</div>
+          <div className="text-teal-100 text-xs mt-1">Asset ID: {data.config?.assetId || "None"}</div>
+        </CardContent>
+      </Card>
+      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-teal-400 border-2 border-white" />
+      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-teal-400 border-2 border-white" />
+    </div>
+  )
+}
+
 export function ConditionNode({ data, selected }: AlgorandNodeProps) {
   return (
     <div className="relative">

@@ -87,8 +87,8 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         const freezeAccountNode = sourceNodes.find(n => n?.type === 'account');
         if (!freezeAccountNode) continue;
         const assetID = node.data.config.assetId || 0;
-        const targetAccount = node.data.config.targetAccount || "TARGET_ALGORAND_ADDRESS";
-        const freezeState = node.data.config.freezeState || false;
+        const targetAccount = node.data.config.freezeTarget || "TARGET_ALGORAND_ADDRESS";
+        const freezeState = node.data.config.freezeState ? "true" : "false";
         code += `    // Asset freeze transaction from ${freezeAccountNode.data.label}\n`;
         code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makeAssetFreezeTxnWithSuggestedParamsFromObject({\n`;
         code += `        from: ${freezeAccountNode.id.replace(/-/g, '_')}.addr,\n`;
@@ -99,14 +99,14 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         code += `    });\n\n`;
         break;
       }
-      case "keyRegistration": {
+      case "keyReg": {
         const accountNode = sourceNodes.find(n => n?.type === 'account');
         if (!accountNode) continue;
         code += `    // Key registration transaction from ${accountNode.data.label}\n`;
         code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({\n`;
         code += `        from: ${accountNode.id.replace(/-/g, '_')}.addr,\n`;
-        code += `        voteKey: new Uint8Array(32),\n`;
-        code += `        selectionKey: new Uint8Array(32),\n`;
+        code += `        voteKey: new Uint8Array(32), // Set to 32 zero bytes if you don't have participation keys\n`;
+        code += `        selectionKey: new Uint8Array(32), // Same as above\n`;
         code += `        voteFirst: params.firstRound,\n`;
         code += `        voteLast: params.lastRound + 1000,\n`;
         code += `        voteKeyDilution: 10,\n`;
@@ -115,7 +115,7 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         break;
       }
       case "signTxn": {
-        const txnNodes = sourceNodes.filter(n => n?.type === 'payment' || n?.type === 'assetTransfer' || n?.type === 'assetCreate' || n?.type === 'assetFreeze' || n?.type === 'keyRegistration');
+        const txnNodes = sourceNodes.filter(n => ['payment', 'assetTransfer', 'assetCreate', 'assetFreeze', 'keyReg'].includes(n?.type || ''));
         if (txnNodes.length === 0) continue;
         const senderNode = accountNodes.find(acc => edges.some(edge => edge.source === acc.id && edge.target === txnNodes[0]?.id));
         if (!senderNode) continue;
