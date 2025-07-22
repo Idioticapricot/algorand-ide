@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FlowBuilder } from "@/components/flow-builder"
@@ -28,6 +28,28 @@ export default function BuildPage() {
   const [selectedNode, setSelectedNode] = useState(null)
   const [showWallet, setShowWallet] = useState(false)
   const [wallet, setWallet] = useState<Wallet | null>(null)
+
+  const getWallet = () => {
+    const savedWallet = localStorage.getItem("algorand-wallet")
+    if (savedWallet) {
+      try {
+        const parsedWallet = JSON.parse(savedWallet)
+        if (parsedWallet && typeof parsedWallet.address === 'string') {
+          setWallet(parsedWallet)
+        } else {
+          console.error("Invalid wallet data in localStorage:", parsedWallet)
+          localStorage.removeItem("algorand-wallet") // Clear invalid data
+        }
+      } catch (error) {
+        console.error("Error parsing wallet from localStorage:", error)
+        localStorage.removeItem("algorand-wallet") // Clear corrupted data
+      }
+    }
+  }
+
+  useEffect(() => {
+    getWallet()
+  }, [])
 
   const createWallet = async () => {
     try {
