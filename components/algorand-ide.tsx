@@ -105,10 +105,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     return paths;
   };
 
-  const initialFilePaths = getAllFilePaths(currentFiles);
-
-  const [activeFile, setActiveFile] = useState(initialFilePaths[0] || "");
-  const [openFiles, setOpenFiles] = useState<string[]>(initialFilePaths);
+  const [activeFile, setActiveFile] = useState("");
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const getAllFileContents = (tree: any, currentPath: string = '') => {
     let contents: Record<string, string> = {};
     for (const key in tree) {
