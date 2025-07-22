@@ -7,7 +7,7 @@ import { WebContainer } from "@webcontainer/api"
 import { Sidebar } from "@/components/sidebar"
 import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynamic"
 import { WebContainerTerminal } from "@/components/webcontainer-terminal"
-import { XTermTerminalDynamic as XTermTerminal } from "@/components/xterm-terminal-dynamic"
+import AIChat from "@/components/ai-chat"
 import { BuildToolbar } from "@/components/build-toolbar"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
@@ -895,7 +895,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
               />
             </div>
             <div className="flex-1">
-              <XTermTerminal title="TERMINAL" />
+              <AIChat title="AI CHAT" />
             </div>
           </div>
         </div>
