@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 
 interface NodeSidebarProps {
-  type: "smart-contract" | "transaction"
+  type: "transaction"
 }
 
 const algorandNodes = [
@@ -38,6 +38,20 @@ const algorandNodes = [
     category: "Transaction",
   },
   {
+    id: "assetFreeze",
+    label: "FREEZE ASSET",
+    description: "Freeze/Unfreeze ASA",
+    color: "bg-orange-600",
+    category: "Transaction",
+  },
+  {
+    id: "keyRegistration",
+    label: "KEY REGISTRATION",
+    description: "Participate in consensus",
+    color: "bg-red-600",
+    category: "Transaction",
+  },
+  {
     id: "signTxn",
     label: "SIGN TXN",
     description: "Sign transaction",
@@ -49,20 +63,6 @@ const algorandNodes = [
     label: "EXECUTE TXN",
     description: "Execute transaction",
     color: "bg-pink-600",
-    category: "Transaction",
-  },
-  {
-    id: "applicationCall",
-    label: "APP CALL",
-    description: "Smart contract call",
-    color: "bg-orange-600",
-    category: "Smart Contract",
-  },
-  {
-    id: "keyReg",
-    label: "KEY REG",
-    description: "Key registration",
-    color: "bg-red-600",
     category: "Transaction",
   },
   {
@@ -81,16 +81,12 @@ const algorandNodes = [
   },
 ]
 
-const smartContractNodes = algorandNodes.filter((node) =>
-  ["Core", "Smart Contract", "Logic", "Utility"].includes(node.category),
-)
-
 const transactionNodes = algorandNodes.filter((node) =>
   ["Core", "Transaction", "Logic", "Utility"].includes(node.category),
 )
 
 export function NodeSidebar({ type }: NodeSidebarProps) {
-  const nodes = type === "smart-contract" ? smartContractNodes : transactionNodes
+  const nodes = transactionNodes
 
   const onDragStart = (event: React.DragEvent, nodeType: string, nodeLabel: string) => {
     event.dataTransfer.setData("application/reactflow", nodeType)
@@ -114,13 +110,11 @@ export function NodeSidebar({ type }: NodeSidebarProps) {
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-white text-lg font-semibold">
-            {type === "smart-contract" ? "Smart Contract Builder" : "Transaction Builder"}
+            Transaction Builder
           </h2>
         </div>
         <p className="text-gray-400 text-sm">
-          {type === "smart-contract"
-            ? "Create and deploy smart contracts visually"
-            : "Create and manage Algorand transactions visually"}
+          Create and manage Algorand transactions visually
         </p>
       </div>
 
@@ -129,7 +123,7 @@ export function NodeSidebar({ type }: NodeSidebarProps) {
           <div className="flex items-center justify-between">
             <h3 className="text-white text-sm font-semibold">Algorand Nodes</h3>
             <Badge variant="secondary" className="text-xs">
-              {type === "smart-contract" ? "Smart Contract" : "Transaction"}
+              Transaction
             </Badge>
           </div>
         </div>

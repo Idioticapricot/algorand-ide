@@ -23,7 +23,7 @@ interface Wallet {
 
 export default function BuildPage() {
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("smart-contracts")
+  const [activeTab, setActiveTab] = useState("transactions")
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
   const [selectedNode, setSelectedNode] = useState(null)
@@ -153,11 +153,7 @@ export default function BuildPage() {
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <div className="px-4 py-2 border-b flex items-center justify-center gap-8" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
-            <TabsList className="grid w-full max-w-md grid-cols-2 backdrop-blur-lg" style={{ backgroundColor: "var(--background-color)" }}>
-              <TabsTrigger value="smart-contracts" className="data-[state=active]:bg-[var(--button-color)]">
-                <Code className="h-4 w-4 mr-2" />
-                Smart Contracts
-              </TabsTrigger>
+            <TabsList className="grid w-full max-w-md grid-cols-1 backdrop-blur-lg" style={{ backgroundColor: "var(--background-color)" }}>
               <TabsTrigger value="transactions" className="data-[state=active]:bg-[var(--button-color)]">
                 <Zap className="h-4 w-4 mr-2" />
                 Transactions
@@ -224,16 +220,6 @@ export default function BuildPage() {
               </Button>
             </div>
           </div>
-
-          <TabsContent value="smart-contracts" className="flex-1 m-0 overflow-hidden">
-            <FlowBuilder
-              type="smart-contract"
-              key="smart-contract"
-              onNodesChange={setNodes}
-              onEdgesChange={setEdges}
-              onNodeSelect={setSelectedNode}
-            />
-          </TabsContent>
 
           <TabsContent value="transactions" className="flex-1 m-0 overflow-hidden">
             <FlowBuilder

@@ -36,7 +36,7 @@ import { generateCode } from "@/lib/code-generator"
 import { type Edge, type Node } from "@xyflow/react"
 
 interface FlowBuilderProps {
-  type: "smart-contract" | "transaction"
+  type: "transaction"
   onFlowChange?: (nodes: Node[], edges: Edge[]) => void
 }
 
@@ -137,29 +137,6 @@ export function FlowBuilder({ type, onFlowChange }: FlowBuilderProps) {
 
   // Initialize with different example nodes based on type
   useEffect(() => {
-    const smartContractNodes: Node[] = [
-      {
-        id: "sc-example-1",
-        type: "account",
-        position: { x: 400, y: 100 },
-        data: {
-          label: "ACCOUNT",
-          nodeType: "account",
-          config: { address: null },
-        },
-      },
-      {
-        id: "sc-example-2",
-        type: "applicationCall",
-        position: { x: 650, y: 100 },
-        data: {
-          label: "APP CALL",
-          nodeType: "applicationCall",
-          config: { appId: null, method: "call" },
-        },
-      },
-    ]
-
     const transactionNodes: Node[] = [
       {
         id: "tx-example-1",
@@ -183,7 +160,7 @@ export function FlowBuilder({ type, onFlowChange }: FlowBuilderProps) {
       },
     ]
 
-    const initialNodes = type === "smart-contract" ? smartContractNodes : transactionNodes
+    const initialNodes = transactionNodes
     setNodes(initialNodes)
   }, [type, setNodes])
 

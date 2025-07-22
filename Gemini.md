@@ -1,50 +1,95 @@
-For anything 
+ 
+ 
+ 1️⃣ Create Asset Transaction (ASA Creation)
 
-    const params = await algodClient.getTransactionParams().do();
-this code should be common
-
-
-For Payment Transaciton node
-
-const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        from: senderAccount.addr,
-        to: receiver,
-        amount: amount, // should be specified in the node params
+ const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+        from: creator.addr,
+        total: 1000000, // Total supply
+        decimals: 0, // No fractional parts
+        defaultFrozen: false,
+        unitName: "MYASA",
+        assetName: "My Custom Token",
+        manager: creator.addr, // Manager Address
+        reserve: creator.addr,
+        freeze: creator.addr,
+        clawback: creator.addr,
         suggestedParams: params
     });
 
-    For signing txn node 
-
-
-    // Sign the transaction with the sender's private key
-
-        const signedTxn = txn.signTxn(senderAccount.sk);
-
-// Send the transaction to the network
+    const signedTxn = txn.signTxn(creator.sk);
     const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
-    console.log("Transaction sent with ID:", txId);
 
 
-
-    This code is for the payment transaction nodes.. 
-
-
-For Asset Transaction Node i want this
-// Create asset transfer transaction object
-    const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        from: senderAccount.addr,
+    2️⃣ Asset Transfer Transaction (ASA Transfer)
+const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        from: sender.addr,
         to: receiver,
-        assetIndex: assetID, // ASA ID
-        amount: amount,
+        assetIndex: assetID,
+        amount: 10, // Transfer 10 units of the ASA
         suggestedParams: params
     });
 
+    const signedTxn = txn.signTxn(sender.sk);
+    const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
+
+3️⃣ Asset Freeze Transaction (ASA Freeze / Unfreeze)
 
 
 
-i want the params to work i can be able to to that, just implement the payment and the asset transafer now , i want to export the code when i click download i need to download the code in .js format
+const params = await algodClient.getTransactionParams().do();
 
-```
+    // Create the asset freeze transaction
+    const txn = algosdk.makeAssetFreezeTxnWithSuggestedParamsFromObject({
+        from: freezeAccount.addr, // Only the Freeze Manager can do this
+        assetIndex: assetID, // ASA ID
+        freezeTarget: targetAccount, // Account to freeze/unfreeze
+        freezeState: freezeFlag, // true = freeze, false = unfreeze
+        suggestedParams: params
+    });
+
+    // Sign the transaction with Freeze Manager's private key
+    const signedTxn = txn.signTxn(freezeAccount.sk);
+
+    // Send the transaction to the network
+    const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
+    console.log("Freeze transaction sent with ID:", txId);
+
+    // Wait for confirmation
+    const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
+    console.log("Freeze confirmed in round", confirmedTxn['confirmed-round']);
+
+
+    4️⃣ Key Registration Transaction (Participating in Consensus)
+const params = await algodClient.getTransactionParams().do();
+
+    // Create key registration transaction
+    const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
+        from: account.addr,
+        voteKey: new Uint8Array(32), // Set to 32 zero bytes if you don't have participation keys
+        selectionKey: new Uint8Array(32), // Same as above
+        voteFirst: params.firstRound, // When voting starts
+        voteLast: params.lastRound + 1000, // How long the key is valid
+        voteKeyDilution: 10, // Dilution factor (minimum is 1, typical is 10 or 10000)
+        suggestedParams: params
+    });
+
+    // Sign the transaction
+    const signedTxn = txn.signTxn(account.sk);
+
+    // Send the transaction to the network
+    const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
+    console.log("Key Registration Transaction sent with ID:", txId);
+
+    // Wait for confirmation
+    const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
+    console.log("Key Registration confirmed in round", confirmedTxn['confirmed-round']);
+}
+
+
+
+
+1st fix i want you to impmenet the above trasacntions also in the flow builder
+2nd fix i am not getitng any export code int he downlaoded export file
 import algosdk from 'algosdk';
 
 // Connect to Algorand node (TestNet in this example)
@@ -54,49 +99,19 @@ const algodPort = ''; // Empty for Algonode cloud
 
 const algodClient = new algosdk.Algodv2(algodToken, algodServer, algodPort);
 
-// Sender account (Replace with your private key)
-const senderMnemonic = "PASTE YOUR MNEMONIC HERE";
-const senderAccount = algosdk.mnemonicToSecretKey(senderMnemonic);
 
-// Receiver address
-const receiver = "RECEIVER_ALGORAND_ADDRESS";
-
-// Async function to perform payment transaction
-async function sendAlgos() {
-    // Get transaction parameters from the network (like fee, firstRound, etc.)
+async function main() {
+    // Get transaction parameters from the network
     const params = await algodClient.getTransactionParams().do();
 
-    // Amount to send in microAlgos (1 Algo = 1,000,000 microAlgos)
-    const amount = 1000000; // 1 ALGO
-
-    // Create payment transaction object
-    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        from: senderAccount.addr,
-        to: receiver,
-        amount: amount,
-        suggestedParams: params
-    });
-
-    // Sign the transaction with the sender's private key
-    const signedTxn = txn.signTxn(senderAccount.sk);
-
-    // Send the transaction to the network
-    const { txId } = await algodClient.sendRawTransaction(signedTxn).do();
-    console.log("Transaction sent with ID:", txId);
-
-    // Wait for confirmation
-    const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-    console.log("Transaction confirmed in round", confirmedTxn['confirmed-round']);
 }
 
-sendAlgos().catch(console.error);
+main().catch(console.error);
 
-```
+This is the output...
 
-
-
-i want the params to work i can be able to to that, just implement the payment and the asset transafer now , i want to export the code when i click download i need to download the code in .js format, the above code should be there in the js, the file should be like the above, 
+i think it may be beacause of i have 2 tabs one is for Smart Contracts and one is for trsactions
 
 
-and also in the Account Node , i want to use the mnemonics from the localStorage so when you drag the Account node i want to add the default Mnemonics, it should also show in the Node Properties..
+Remove the tab for Smart COntracts .. i want only transaction please make change like this
 

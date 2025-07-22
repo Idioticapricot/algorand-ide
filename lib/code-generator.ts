@@ -44,6 +44,29 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         code += `    });\n\n`;
         break;
       }
+      case "assetCreate": {
+        const creatorNode = sourceNodes.find(n => n?.type === 'account');
+        if (!creatorNode) continue;
+        const total = node.data.config.total || 1000000;
+        const decimals = node.data.config.decimals || 0;
+        const unitName = node.data.config.unitName || "MYASA";
+        const assetName = node.data.config.assetName || "My Custom Token";
+        code += `    // ASA Creation transaction from ${creatorNode.data.label}\n`;
+        code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({\n`;
+        code += `        from: ${creatorNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        total: ${total},\n`;
+        code += `        decimals: ${decimals},\n`;
+        code += `        defaultFrozen: false,\n`;
+        code += `        unitName: "${unitName}",\n`;
+        code += `        assetName: "${assetName}",\n`;
+        code += `        manager: ${creatorNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        reserve: ${creatorNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        freeze: ${creatorNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        clawback: ${creatorNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        suggestedParams: params\n`;
+        code += `    });\n\n`;
+        break;
+      }
       case "assetTransfer": {
         const senderNode = sourceNodes.find(n => n?.type === 'account');
         if (!senderNode) continue;
@@ -60,8 +83,39 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         code += `    });\n\n`;
         break;
       }
+      case "assetFreeze": {
+        const freezeAccountNode = sourceNodes.find(n => n?.type === 'account');
+        if (!freezeAccountNode) continue;
+        const assetID = node.data.config.assetId || 0;
+        const targetAccount = node.data.config.targetAccount || "TARGET_ALGORAND_ADDRESS";
+        const freezeState = node.data.config.freezeState || false;
+        code += `    // Asset freeze transaction from ${freezeAccountNode.data.label}\n`;
+        code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makeAssetFreezeTxnWithSuggestedParamsFromObject({\n`;
+        code += `        from: ${freezeAccountNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        assetIndex: ${assetID},\n`;
+        code += `        freezeTarget: "${targetAccount}",\n`;
+        code += `        freezeState: ${freezeState},\n`;
+        code += `        suggestedParams: params\n`;
+        code += `    });\n\n`;
+        break;
+      }
+      case "keyRegistration": {
+        const accountNode = sourceNodes.find(n => n?.type === 'account');
+        if (!accountNode) continue;
+        code += `    // Key registration transaction from ${accountNode.data.label}\n`;
+        code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({\n`;
+        code += `        from: ${accountNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        voteKey: new Uint8Array(32),\n`;
+        code += `        selectionKey: new Uint8Array(32),\n`;
+        code += `        voteFirst: params.firstRound,\n`;
+        code += `        voteLast: params.lastRound + 1000,\n`;
+        code += `        voteKeyDilution: 10,\n`;
+        code += `        suggestedParams: params\n`;
+        code += `    });\n\n`;
+        break;
+      }
       case "signTxn": {
-        const txnNodes = sourceNodes.filter(n => n?.type === 'payment' || n?.type === 'assetTransfer');
+        const txnNodes = sourceNodes.filter(n => n?.type === 'payment' || n?.type === 'assetTransfer' || n?.type === 'assetCreate' || n?.type === 'assetFreeze' || n?.type === 'keyRegistration');
         if (txnNodes.length === 0) continue;
         const senderNode = accountNodes.find(acc => edges.some(edge => edge.source === acc.id && edge.target === txnNodes[0]?.id));
         if (!senderNode) continue;
