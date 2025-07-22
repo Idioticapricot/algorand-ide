@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import FileTree from "@/components/file-tree"
 import { cn } from "@/lib/utils"
+import { FileText } from "lucide-react";
 
 interface SidebarProps {
   activeSection: string
