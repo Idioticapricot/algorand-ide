@@ -5,19 +5,16 @@ import type React from "react"
 import { useState } from "react"
 import {
   FolderOpen,
-  ChevronRight,
-  ChevronDown,
   Hammer,
   TestTube,
   Code,
   BookOpen,
-  Folder,
-  FileText,
   Settings,
   FilePlus,
   FolderPlus,
   Trash2,
 } from "lucide-react"
+import FileTree from "@/components/file-tree"
 import { cn } from "@/lib/utils"
 
 interface SidebarProps {
@@ -98,93 +95,7 @@ export function Sidebar({
     setContextMenu(null)
   }
 
-  const renderFileTree = (structure: any, basePath = "", depth = 0) => {
-    return Object.entries(structure).map(([name, item]: [string, any]) => {
-      const fullPath = basePath ? `${basePath}/${name}` : name
-      const paddingLeft = depth * 16 + 8
-
-      if (item.directory) {
-        const isExpanded = expandedFolders.has(fullPath)
-        return (
-          <div key={fullPath}>
-            <div
-              className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#2a2d2e] cursor-pointer text-sm transition-colors group"
-              style={{ paddingLeft: `${paddingLeft}px` }}
-              onClick={() => toggleFolder(fullPath)}
-              onContextMenu={(e) => handleContextMenu(e, fullPath)}
-            >
-              {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-[#cccccc]" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-[#cccccc]" />
-              )}
-              <Folder className="w-4 h-4 text-[#dcb67a]" />
-              <span className="text-[#cccccc] flex-1">{name}</span>
-              <div className="opacity-0 group-hover:opacity-100 flex gap-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowCreateDialog({ type: "file", path: fullPath })
-                  }}
-                  className="p-1 hover:bg-[#37373d] rounded"
-                  title="New File"
-                  disabled={!isWebContainerReady}
-                >
-                  <FilePlus className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowCreateDialog({ type: "folder", path: fullPath })
-                  }}
-                  className="p-1 hover:bg-[#37373d] rounded"
-                  title="New Folder"
-                  disabled={!isWebContainerReady}
-                >
-                  <FolderPlus className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-            {isExpanded && <div>{renderFileTree(item.directory, fullPath, depth + 1)}</div>}
-          </div>
-        )
-      } else if (item.file) {
-        return (
-          <div
-            key={fullPath}
-            className={cn(
-              "flex items-center gap-2 px-2 py-1.5 hover:bg-[#2a2d2e] cursor-pointer text-sm transition-colors group",
-              activeFile === fullPath && "bg-[#37373d] text-white",
-            )}
-            style={{ paddingLeft: `${paddingLeft + 20}px` }}
-            onClick={() => {
-              if (activeSection === "build") {
-                onArtifactFileSelect(fullPath);
-              } else {
-                onFileSelect(fullPath);
-              }
-            }}
-            onContextMenu={(e) => handleContextMenu(e, fullPath)}
-          >
-            <FileText className="w-4 h-4 text-[#cccccc]" />
-            <span className="text-[#cccccc] flex-1">{name}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                deleteItem(fullPath)
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#37373d] rounded"
-              title="Delete"
-              disabled={!isWebContainerReady}
-            >
-              <Trash2 className="w-3 h-3 text-red-400" />
-            </button>
-          </div>
-        )
-      }
-      return null
-    })
-  }
+  
 
   return (
     <div className="h-full flex overflow-hidden relative">
@@ -240,7 +151,11 @@ export function Sidebar({
               <div className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#969696] mb-2">
                 Hello Algorand
               </div>
-              <div>{renderFileTree(fileStructureProp)}</div>
+              <FileTree
+                fileStructure={fileStructureProp}
+                activeFile={activeFile}
+                onFileSelect={onFileSelect}
+              />
             </div>
           )}
 
