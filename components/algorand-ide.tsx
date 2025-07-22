@@ -675,7 +675,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     }
   };
-
+  const handleSave = () =>{}
   const executeMethod = async () => {
     if (!webcontainer || !selectedContract || !selectedMethod) return;
     setIsDeploying(true);
@@ -779,7 +779,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         isInstalling={isInstalling}
         onStop={handleStop}
         isWebContainerReady={isWebContainerReady}
-       
+        onSave={handleSave}
       />
 
       {/* Main Layout */}

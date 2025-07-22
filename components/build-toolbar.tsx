@@ -8,12 +8,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+import { Save } from "lucide-react"
+
 interface BuildToolbarProps {
   onBuild: () => void
   onTest: () => void
   onDeploy: () => void
   onInstall: () => void;
   onGenerateClient: () => void;
+  onSave: () => void;
   isBuilding: boolean
   isInstalling: boolean;
   onStop: () => void
@@ -26,6 +29,7 @@ export function BuildToolbar({
   onDeploy, 
   onInstall, 
   onGenerateClient, 
+  onSave,
   isBuilding, 
   isInstalling, 
   onStop, 
@@ -84,6 +88,16 @@ export function BuildToolbar({
         >
           <Square className="w-4 h-4 mr-2" />
           Generate Client
+        </Button>
+
+        <Button
+          onClick={onSave}
+          disabled={isBuilding || !isWebContainerReady}
+          size="sm"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 h-8"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          Save
         </Button>
 
         {isBuilding && (
