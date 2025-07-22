@@ -13,9 +13,22 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
   code += `const algodClient = new algosdk.Algodv2(algodToken, algodServer, algodPort);\n\n`;
 
   // Generate account setups
+  let storedMnemonic = "";
+  try {
+    const savedWallet = localStorage.getItem("algorand-wallet");
+    if (savedWallet) {
+      const parsedWallet = JSON.parse(savedWallet);
+      if (parsedWallet && parsedWallet.mnemonic) {
+        storedMnemonic = parsedWallet.mnemonic;
+      }
+    }
+  } catch (error) {
+    console.error("Error parsing wallet from localStorage:", error);
+  }
+
   const accountNodes = nodes.filter(node => node.type === 'account');
   accountNodes.forEach(node => {
-    const mnemonic = node.data.config.mnemonic || localStorage.getItem("mnemonic") || "PASTE YOUR MNEMONIC HERE";
+    const mnemonic = node.data.config.mnemonic || storedMnemonic || "PASTE YOUR MNEMONIC HERE";
     code += `// Account from node: ${node.data.label}\n`;
     code += `const ${node.id.replace(/-/g, '_')} = algosdk.mnemonicToSecretKey("${mnemonic}");\n`;
   });
