@@ -2,6 +2,9 @@ import algosdk from 'algosdk';
 import type { Node, Edge } from '@xyflow/react';
 
 export const generateCode = (nodes: Node[], edges: Edge[]): string => {
+  if (nodes.length === 0) {
+    return `// No nodes found in the flow. Add nodes to generate code.`;
+  }
   let code = `import algosdk from 'algosdk';\n\n`;
   code += `// Connect to Algorand node (TestNet in this example)\n`;
   code += `const algodToken = 'YOUR_ALGOD_API_TOKEN';\n`;

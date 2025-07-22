@@ -225,8 +225,10 @@ export default function BuildPage() {
             <FlowBuilder
               type="transaction"
               key="transaction"
-              onNodesChange={setNodes}
-              onEdgesChange={setEdges}
+              onFlowChange={(newNodes, newEdges) => {
+                setNodes(newNodes);
+                setEdges(newEdges);
+              }}
               onNodeSelect={setSelectedNode}
             />
           </TabsContent>

@@ -41,11 +41,11 @@ const algorandNodes = [
     id: "assetFreeze",
     label: "FREEZE ASSET",
     description: "Freeze/Unfreeze ASA",
-    color: "bg-orange-600",
+    color: "bg-teal-600",
     category: "Transaction",
   },
   {
-    id: "keyRegistration",
+    id: "keyReg",
     label: "KEY REGISTRATION",
     description: "Participate in consensus",
     color: "bg-red-600",
