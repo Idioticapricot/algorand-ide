@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import * as monaco from "monaco-editor"
+import Editor from "@monaco-editor/react"
 import { X, Circle } from "lucide-react"
 import type { WebContainer } from "@webcontainer/api"
 
@@ -44,98 +44,47 @@ export function CodeEditor({
   onFileContentChange,
   webcontainer,
 }: CodeEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null)
-  const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
 
-  const isMonacoInitialized = useRef(false);
-
-  useEffect(() => {
-    if (editorRef.current && !isMonacoInitialized.current) {
-      // Clear any existing content first
-      editorRef.current.innerHTML = "";
-
-      // Define custom theme
-      monaco.editor.defineTheme("algorand-dark", {
-        base: "vs-dark",
-        inherit: true,
-        rules: [
-          { token: "comment", foreground: "6A9955" },
-          { token: "keyword", foreground: "569CD6" },
-          { token: "string", foreground: "CE9178" },
-          { token: "number", foreground: "B5CEA8" },
-          { token: "type", foreground: "4EC9B0" },
-          { token: "function", foreground: "DCDCAA" },
-        ],
-        colors: {
-          "editor.background": "#1e1e1e",
-          "editor.foreground": "#d4d4d4",
-          "editorLineNumber.foreground": "#858585",
-          "editor.selectionBackground": "#264f78",
-          "editor.inactiveSelectionBackground": "#3a3d41",
-          "editorCursor.foreground": "#ffffff",
-        },
-      });
-
-      monacoRef.current = monaco.editor.create(editorRef.current, {
-        value: "// Loading file...",
-        language: getLanguage(activeFile),
-        theme: "algorand-dark",
-        fontSize: 14,
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-        minimap: { enabled: true },
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        wordWrap: "on",
-        lineNumbers: "on",
-        renderWhitespace: "selection",
-        bracketPairColorization: { enabled: true },
-        guides: {
-          indentation: true,
-          bracketPairs: true,
-        },
-      });
-
-      // Handle content changes
-      monacoRef.current.onDidChangeModelContent(async () => {
-        if (webcontainer && activeFile && monacoRef.current) {
-          const content = monacoRef.current.getValue();
-          onFileContentChange(activeFile, content);
-          setUnsavedFiles((prev) => new Set([...prev, activeFile]));
-        }
-      });
-
-      // Load initial file
-      loadFileContent();
-      isMonacoInitialized.current = true;
-    }
-
-    return () => {
-      if (monacoRef.current && isMonacoInitialized.current) {
-        monacoRef.current.dispose();
-        monacoRef.current = null;
-        isMonacoInitialized.current = false;
-      }
-    };
-  }, []);
-
-  // Load file content from WebContainer
-  const loadFileContent = async () => {
-    if (activeFile && monacoRef.current) {
-      const content = fileContents[activeFile] ?? `// Loading file: ${activeFile}...`
-      monacoRef.current.setValue(content)
-      monaco.editor.setModelLanguage(monacoRef.current.getModel()!, getLanguage(activeFile))
-      setUnsavedFiles((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(activeFile)
-        return newSet
-      })
+  const handleEditorChange = (value: string | undefined) => {
+    if (activeFile && value !== undefined) {
+      onFileContentChange(activeFile, value)
+      setUnsavedFiles((prev) => new Set([...prev, activeFile]))
     }
   }
 
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    // Define custom theme
+    monaco.editor.defineTheme("algorand-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "6A9955" },
+        { token: "keyword", foreground: "569CD6" },
+        { token: "string", foreground: "CE9178" },
+        { token: "number", foreground: "B5CEA8" },
+        { token: "type", foreground: "4EC9B0" },
+        { token: "function", foreground: "DCDCAA" },
+      ],
+      colors: {
+        "editor.background": "#1e1e1e",
+        "editor.foreground": "#d4d4d4",
+        "editorLineNumber.foreground": "#858585",
+        "editor.selectionBackground": "#264f78",
+        "editor.inactiveSelectionBackground": "#3a3d41",
+        "editorCursor.foreground": "#ffffff",
+      },
+    })
+    // editor.setTheme("algorand-dark")
+  }
+
   useEffect(() => {
-    loadFileContent()
-  }, [activeFile, webcontainer])
+    setUnsavedFiles((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(activeFile)
+      return newSet
+    })
+  }, [activeFile])
 
   if (openFiles.length === 0) {
     return (
@@ -182,18 +131,28 @@ export function CodeEditor({
       </div>
 
       {/* Editor */}
-      <div
-        ref={editorRef}
-        className="flex-1 overflow-hidden relative"
-        style={{
-          width: "100%",
-          height: "100%",
-          position: "relative",
-          zIndex: 1,
+      <Editor
+        height="100%"
+        language={getLanguage(activeFile)}
+        value={fileContents[activeFile]}
+        onChange={handleEditorChange}
+        onMount={handleEditorDidMount}
+        options={{
+          fontSize: 14,
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+          minimap: { enabled: true },
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          wordWrap: "on",
+          lineNumbers: "on",
+          renderWhitespace: "selection",
+          bracketPairColorization: { enabled: true },
+          guides: {
+            indentation: true,
+            bracketPairs: true,
+          },
         }}
-      >
-        {/* Monaco Editor will be rendered here and contained within this div */}
-      </div>
+      />
     </div>
   )
 }
