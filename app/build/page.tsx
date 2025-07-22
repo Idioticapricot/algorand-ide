@@ -23,6 +23,7 @@ interface Wallet {
 
 export default function BuildPage() {
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
+  const [terminalOutput, setTerminalOutput] = useState("")
   const [activeTab, setActiveTab] = useState("transactions")
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
@@ -108,12 +109,76 @@ export default function BuildPage() {
     }
   }
 
-  const handleRun = () => {
+  const handleRun = async () => {
+    setTerminalOutput("") // Clear previous output
+    setIsTerminalOpen(true) // Open terminal
+
     toast({
       title: "Running Flow",
       description: "Your Algorand flow is being executed...",
       duration: 3000,
     })
+
+    const generatedCode = generateCode(nodes, edges)
+
+    // Replace the algosdk import statement in the generated code
+    let modifiedGeneratedCode = generatedCode.replace(
+      "import algosdk from 'algosdk';",
+      ""
+    );
+     modifiedGeneratedCode = modifiedGeneratedCode.replace(
+      "const algodClient = new algosdk.Algodv2(algodToken, algodServer, algodPort);",
+      ""
+    );
+
+
+    modifiedGeneratedCode = modifiedGeneratedCode.replace(
+      "const params = await algodClient.getTransactionParams().do();",
+      ""
+    );
+    // console.log(modifiedGeneratedCode)
+    // Capture console.log output
+    let capturedOutput = ""
+    const originalConsoleLog = console.log
+    console.log = (...args) => {
+      capturedOutput += args.join(" ") + "\n"
+      originalConsoleLog.apply(console, args)
+    }
+
+    try {
+      const algodToken = 'YOUR_ALGOD_API_TOKEN';
+      const algodServer = 'https://testnet-api.algonode.cloud';
+      const algodPort = ''; // Empty for Algonode cloud
+
+      const algodClient = new algosdk.Algodv2(algodToken, algodServer, algodPort);
+      const params = await algodClient.getTransactionParams().do();
+      // Execute the generated code
+      // Using new Function() is generally not recommended for untrusted code
+      // due to security risks (e.g., XSS). For an IDE where the user generates
+      // their own code, it's a practical approach.
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const runnableCode = new AsyncFunction('algosdk', 'algodClient', 'params', modifiedGeneratedCode);
+      
+      await runnableCode(algosdk, algodClient, params);
+
+      setTerminalOutput(capturedOutput)
+      toast({
+        title: "Flow Execution Complete",
+        description: "Check terminal for output.",
+        duration: 3000,
+      })
+    } catch (error: any) {
+      setTerminalOutput(capturedOutput + `\nError: ${error.message}`)
+      toast({
+        title: "Flow Execution Failed",
+        description: error.message,
+        duration: 5000,
+        variant: "destructive",
+      })
+    } finally {
+      // Restore original console.log
+      console.log = originalConsoleLog
+    }
   }
 
   return (
@@ -267,7 +332,7 @@ export default function BuildPage() {
       )}
 
       {/* Terminal */}
-      <TerminalBuild isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} />
+      <TerminalBuild isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} output={terminalOutput} />
     </div>
   )
 }

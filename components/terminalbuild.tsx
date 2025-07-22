@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 interface TerminalBuildProps {
   isOpen: boolean
   onClose: () => void
+  output: string
 }
 
-export function TerminalBuild({ isOpen, onClose }: TerminalBuildProps) {
+export function TerminalBuild({ isOpen, onClose, output }: TerminalBuildProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,9 +39,7 @@ export function TerminalBuild({ isOpen, onClose }: TerminalBuildProps) {
         </button>
       </div>
       <div className="p-4 text-sm text-[var(--text-color)] overflow-y-auto h-[calc(100%-40px)]">
-        {/* Terminal content goes here */}
-        <p>This is a simulated terminal output.</p>
-        <p>Build messages will appear here.</p>
+        <pre className="whitespace-pre-wrap break-all">{output}</pre>
       </div>
     </div>
   )

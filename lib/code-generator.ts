@@ -53,8 +53,8 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         const amount = (node.data.config.amount || 0) * 1000000; // Algos to microAlgos
         code += `    // Payment transaction from ${senderNode.data.label}\n`;
         code += `    const txn_${node.id.replace(/-/g, '_')} = algosdk.makePaymentTxnWithSuggestedParamsFromObject({\n`;
-        code += `        from: ${senderNode.id.replace(/-/g, '_')}.addr,\n`;
-        code += `        to: "${receiver}",\n`;
+        code += `        sender: ${senderNode.id.replace(/-/g, '_')}.addr,\n`;
+        code += `        receiver: "${receiver}",\n`;
         code += `        amount: ${amount}, // ${node.data.config.amount} ALGO\n`;
         code += `        suggestedParams: params\n`;
         code += `    });\n\n`;
@@ -148,9 +148,9 @@ export const generateCode = (nodes: Node[], edges: Edge[]): string => {
         code += `    // Executing transaction\n`;
         code += `    const { txId } = await algodClient.sendRawTransaction(signedTxn_${signedTxnNodes[0]?.id.replace(/-/g, '_')}).do();\n`;
         code += `    console.log("Transaction sent with ID:", txId);\n`;
-        code += `    // Wait for confirmation\n`;
-        code += `    const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);\n`;
-        code += `    console.log("Transaction confirmed in round", confirmedTxn['confirmed-round']);\n\n`;
+        // code += `    // Wait for confirmation\n`;
+        // code += `    const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);\n`;
+        // code += `    console.log("Transaction confirmed in round", confirmedTxn['confirmed-round']);\n\n`;
         break;
       }
     }
