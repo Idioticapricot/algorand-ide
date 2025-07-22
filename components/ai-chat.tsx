@@ -63,21 +63,29 @@ const AIChat: React.FC<AIChatProps> = ({ title }) => {
       </div>
       <ScrollArea className="flex-1 p-4">
         <div className="flex flex-col space-y-2">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[70%] p-2 rounded-lg ${message.type === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-white'
-                }`}
-              >
-                {message.text}
-              </div>
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center text-[#969696]">
+              <h2 className="text-xl mb-2">Welcome back, builder!</h2>
+              <p className="mb-1">Ask Questions via our API</p>
+              <p className="text-sm">Our MCP server is running. Shout out to <a href="https://goplausible.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">goplausible.com</a> for providing Algorand-MCP server.</p>
             </div>
-          ))}
+          ) : (
+            messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[70%] p-2 rounded-lg ${message.type === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-white'
+                  }`}
+                >
+                  {message.text}
+                </div>
+              </div>
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
