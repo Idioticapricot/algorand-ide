@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Editor from "@monaco-editor/react"
 import { X, Circle } from "lucide-react"
 import type { WebContainer } from "@webcontainer/api"
+import dracula from 'monaco-themes/themes/Dracula.json';
 
 interface CodeEditorProps {
   activeFile: string
@@ -55,29 +56,12 @@ export function CodeEditor({
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     // Define custom theme
-    monaco.editor.defineTheme("algorand-dark", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "6A9955" },
-        { token: "keyword", foreground: "569CD6" },
-        { token: "string", foreground: "CE9178" },
-        { token: "number", foreground: "B5CEA8" },
-        { token: "type", foreground: "4EC9B0" },
-        { token: "function", foreground: "DCDCAA" },
-      ],
-      colors: {
-        "editor.background": "#1e1e1e",
-        "editor.foreground": "#d4d4d4",
-        "editorLineNumber.foreground": "#858585",
-        "editor.selectionBackground": "#264f78",
-        "editor.inactiveSelectionBackground": "#3a3d41",
-        "editorCursor.foreground": "#ffffff",
-      },
-    })
-    // editor.setTheme("algorand-dark")
+    monaco.editor.defineTheme('dracula', {
+    
+      ...dracula
+    });
+    monaco.editor.setTheme('dracula');
   }
-
   useEffect(() => {
     setUnsavedFiles((prev) => {
       const newSet = new Set(prev)
