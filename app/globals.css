@@ -93,3 +93,381 @@
 .terminal-container::-webkit-scrollbar-thumb:hover {
   background: #4e4e52;
 }
+
+/* Syntax Highlighting Styles for AI Chat */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.hljs-keyword {
+  color: #569cd6;
+}
+
+.hljs-string {
+  color: #ce9178;
+}
+
+.hljs-comment {
+  color: #6a9955;
+  font-style: italic;
+}
+
+.hljs-number {
+  color: #b5cea8;
+}
+
+.hljs-function {
+  color: #dcdcaa;
+}
+
+.hljs-class {
+  color: #4ec9b0;
+}
+
+.hljs-variable {
+  color: #9cdcfe;
+}
+
+.hljs-operator {
+  color: #d4d4d4;
+}
+
+.hljs-punctuation {
+  color: #d4d4d4;
+}
+
+.hljs-property {
+  color: #9cdcfe;
+}
+
+.hljs-title {
+  color: #dcdcaa;
+}
+
+.hljs-params {
+  color: #9cdcfe;
+}
+
+.hljs-built_in {
+  color: #4ec9b0;
+}
+
+.hljs-literal {
+  color: #569cd6;
+}
+
+.hljs-type {
+  color: #4ec9b0;
+}
+
+.hljs-attr {
+  color: #9cdcfe;
+}
+
+.hljs-tag {
+  color: #569cd6;
+}
+
+.hljs-name {
+  color: #569cd6;
+}
+
+.hljs-selector {
+  color: #d7ba7d;
+}
+
+.hljs-selector-id {
+  color: #d7ba7d;
+}
+
+.hljs-selector-class {
+  color: #d7ba7d;
+}
+
+.hljs-selector-attr {
+  color: #d7ba7d;
+}
+
+.hljs-selector-pseudo {
+  color: #d7ba7d;
+}
+
+.hljs-addition {
+  background-color: #144212;
+  color: #6a9955;
+}
+
+.hljs-deletion {
+  background-color: #600;
+  color: #ce9178;
+}
+
+.hljs-meta {
+  color: #9cdcfe;
+}
+
+.hljs-section {
+  color: #dcdcaa;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* AI Chat Markdown Prose Styles */
+.ai-chat-prose {
+  color: #d4d4d4;
+  line-height: 1.6;
+}
+
+.ai-chat-prose h1,
+.ai-chat-prose h2,
+.ai-chat-prose h3,
+.ai-chat-prose h4,
+.ai-chat-prose h5,
+.ai-chat-prose h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ai-chat-prose h1 {
+  font-size: 1.5em;
+  color: #4ec9b0;
+}
+
+.ai-chat-prose h2 {
+  font-size: 1.3em;
+  color: #4ec9b0;
+}
+
+.ai-chat-prose h3 {
+  font-size: 1.1em;
+  color: #4ec9b0;
+}
+
+.ai-chat-prose p {
+  margin-bottom: 1em;
+}
+
+.ai-chat-prose ul,
+.ai-chat-prose ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.ai-chat-prose li {
+  margin-bottom: 0.25em;
+}
+
+.ai-chat-prose blockquote {
+  border-left: 4px solid #4ec9b0;
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: #a0a0a0;
+}
+
+.ai-chat-prose code {
+  background-color: #2d2d30;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.ai-chat-prose pre {
+  background-color: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+  position: relative;
+}
+
+.ai-chat-prose pre:hover {
+  border-color: #4ec9b0;
+  box-shadow: 0 0 0 1px #4ec9b0;
+}
+
+.ai-chat-prose pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+/* Code block language badge */
+.code-language-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #2d2d30;
+  color: #a0a0a0;
+  padding: 0.25em 0.5em;
+  font-size: 0.75em;
+  border-radius: 0 6px 0 6px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Copy button styling */
+.copy-button {
+  position: absolute;
+  top: 0;
+  right: 4rem;
+  background: #2d2d30;
+  color: #a0a0a0;
+  padding: 0.25em 0.5em;
+  font-size: 0.75em;
+  border-radius: 0 6px 0 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.copy-button:hover {
+  background: #4ec9b0;
+  color: #1e1e1e;
+}
+
+.code-block-container:hover .copy-button {
+  opacity: 1;
+}
+
+.ai-chat-prose a {
+  color: #4ec9b0;
+  text-decoration: underline;
+}
+
+.ai-chat-prose a:hover {
+  color: #6a9955;
+}
+
+.ai-chat-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ai-chat-prose th,
+.ai-chat-prose td {
+  border: 1px solid #3e3e42;
+  padding: 0.75em;
+  text-align: left;
+}
+
+.ai-chat-prose th {
+  background-color: #2d2d30;
+  font-weight: 600;
+  color: #4ec9b0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9em;
+}
+
+.ai-chat-prose td {
+  background-color: #1e1e1e;
+  transition: background-color 0.2s ease;
+}
+
+.ai-chat-prose tr:hover td {
+  background-color: #2d2d30;
+}
+
+.ai-chat-prose hr {
+  border: none;
+  border-top: 2px solid #3e3e42;
+  margin: 2em 0;
+  opacity: 0.6;
+}
+
+.ai-chat-prose img {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.ai-chat-prose img:hover {
+  transform: scale(1.02);
+}
+
+/* Inline code improvements */
+.ai-chat-prose code:not(pre code) {
+  background-color: #2d2d30;
+  color: #4ec9b0;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+  border: 1px solid #3e3e42;
+}
+
+/* Link improvements */
+.ai-chat-prose a {
+  color: #4ec9b0;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.ai-chat-prose a:hover {
+  color: #6a9955;
+  border-bottom-color: #6a9955;
+}
+
+/* List improvements */
+.ai-chat-prose ul,
+.ai-chat-prose ol {
+  margin-bottom: 1.5em;
+  padding-left: 1.5em;
+}
+
+.ai-chat-prose li {
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+}
+
+.ai-chat-prose li::marker {
+  color: #4ec9b0;
+}
+
+/* Blockquote improvements */
+.ai-chat-prose blockquote {
+  border-left: 4px solid #4ec9b0;
+  padding: 1em 1.5em;
+  margin: 1.5em 0;
+  font-style: italic;
+  color: #a0a0a0;
+  background-color: #2d2d30;
+  border-radius: 0 6px 6px 0;
+  position: relative;
+}
+
+.ai-chat-prose blockquote::before {
+  content: '"';
+  font-size: 3em;
+  color: #4ec9b0;
+  position: absolute;
+  left: 0.5em;
+  top: 0.2em;
+  opacity: 0.3;
+  font-family: serif;
+}
