@@ -327,7 +327,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
     const watcher = webcontainer.fs.watch(".", { recursive: true }, (event, filename) => {
       // Ignore changes within node_modules
-      if (filename && filename.startsWith("node_modules/")) {
+      if (filename && typeof filename === 'string' && filename.startsWith("node_modules/")) {
         console.log(`Ignoring file change in node_modules: ${event} on ${filename}`);
         return;
       }
@@ -895,7 +895,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
               />
             </div>
             <div className="flex-1">
-              <AIChat title="AI CHAT" />
+              <AIChat title="AI CHAT" selectedTemplate={selectedTemplate} />
             </div>
           </div>
         </div>
