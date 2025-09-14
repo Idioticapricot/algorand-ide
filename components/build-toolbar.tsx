@@ -1,5 +1,5 @@
 "use client"
-import { Square, Hammer, TestTube, Rocket, ChevronDown } from "lucide-react"
+import { Square, Hammer, TestTube, Rocket, ChevronDown, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ interface BuildToolbarProps {
   onDeploy: () => void
   onInstall: () => void;
   onGenerateClient: () => void;
+  onDownloadSnapshot: () => void;
   onSave: () => void;
   isBuilding: boolean
   isInstalling: boolean;
@@ -29,6 +30,7 @@ export function BuildToolbar({
   onDeploy, 
   onInstall, 
   onGenerateClient, 
+  onDownloadSnapshot,
   onSave,
   isBuilding, 
   isInstalling, 
@@ -88,6 +90,20 @@ export function BuildToolbar({
         >
           <Square className="w-4 h-4 mr-2" />
           Generate Client
+        </Button>
+
+        <Button
+          onClick={() => {
+            console.log('Download Snapshot button clicked');
+            onDownloadSnapshot();
+          }}
+          disabled={isBuilding || !isWebContainerReady}
+          size="sm"
+          variant="outline"
+          className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Download Snapshot
         </Button>
 
         <Button

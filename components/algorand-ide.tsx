@@ -75,7 +75,7 @@ async function mergePersistedFiles(initialFiles: any, persistedFiles: Record<str
   return merged;
 }
 
-// Utility to recursively fetch file structure from WebContainer
+// Utility to recursively fetch file structure from WebContainer (excludes node_modules for UI)
 async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
   console.log(`fetchWebContainerFileTree called for dir: ${dir}, template: ${selectedTemplate}`);
   const tree: any = {};
@@ -110,6 +110,31 @@ async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: s
 
     if (entry.isDirectory()) {
       tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath,selectedTemplate) };
+    } else if (entry.isFile()) {
+      tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
+    }
+  }
+  return tree;
+}
+
+// Utility to fetch ALL files including node_modules for snapshot
+async function fetchWebContainerFileTreeForSnapshot(fs: any, dir = ".") {
+  console.log(`fetchWebContainerFileTreeForSnapshot called for dir: ${dir}`);
+  const tree: any = {};
+  let entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Sort: directories first, then files, then by name
+  entries = entries.sort((a: any, b: any) => {
+    if (a.isDirectory() === b.isDirectory()) return a.name.localeCompare(b.name);
+    return a.isDirectory() ? -1 : 1;
+  });
+
+  for (const entry of entries) {
+    const entryName = entry.name;
+    const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
+
+    if (entry.isDirectory()) {
+      tree[entryName] = { directory: await fetchWebContainerFileTreeForSnapshot(fs, fullPath) };
     } else if (entry.isFile()) {
       tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
     }
@@ -540,6 +565,41 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     setIsBuilding(false)
   }
 
+  const handleDownloadSnapshot = async () => {
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    console.log('handleDownloadSnapshot called for template:', selectedTemplate);
+    setIsBuilding(true);
+    handleTerminalOutput("Creating snapshot with node_modules...");
+    try {
+      console.log('Reading ALL files from WebContainer including node_modules...');
+      const allFiles = await fetchWebContainerFileTreeForSnapshot(webcontainer.fs, ".");
+      console.log('Files read successfully');
+      
+      const jsonData = JSON.stringify(allFiles, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedTemplate}-snapshot.json`;
+      console.log('Triggering download for:', a.download);
+      a.click();
+      
+      URL.revokeObjectURL(url);
+      handleTerminalOutput("Snapshot downloaded successfully.");
+      console.log('Download triggered successfully');
+    } catch (error) {
+      console.error("Snapshot failed:", error);
+      handleTerminalOutput(`Snapshot failed: ${error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  }
+
   
 
   // Resize handlers
@@ -826,6 +886,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         onDeploy={handleDeploy}
         onGenerateClient={handleGenerateClient}
         onInstall={handleInstall}
+        onDownloadSnapshot={handleDownloadSnapshot}
         isBuilding={isBuilding}
         isInstalling={isInstalling}
         onStop={handleStop}

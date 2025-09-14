@@ -41,6 +41,7 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@supabase/supabase-js": "^2.55.0",
     "@webcontainer/api": "latest",
+    "@webcontainer/snapshot": "^0.1.0",
     "@xyflow/react": "^12.8.2",
     "algosdk": "latest",
     "autoprefixer": "^10.4.20",
