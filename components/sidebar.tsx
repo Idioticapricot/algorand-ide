@@ -13,6 +13,10 @@ import {
   FilePlus,
   FolderPlus,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  File,
 } from "lucide-react"
 import FileTree from "@/components/file-tree"
 import { cn } from "@/lib/utils"
@@ -30,6 +34,8 @@ interface SidebarProps {
   isWebContainerReady: boolean
   fileStructure: any
   onArtifactFileSelect: (filePath: string) => void
+  deployedContracts?: any[]
+  onContractSelect?: (contract: any) => void
 }
 
 const sidebarSections = [
@@ -55,8 +61,11 @@ export function Sidebar({
   isWebContainerReady,
   fileStructure: fileStructureProp,
   onArtifactFileSelect,
+  deployedContracts = [],
+  onContractSelect,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["src", "tests", "scripts"]))
+  const [expandedArtifactsFolders, setExpandedArtifactsFolders] = useState<Set<string>>(new Set())
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState<{ type: "file" | "folder"; path: string } | null>(null)
   const [newItemName, setNewItemName] = useState("")
@@ -69,6 +78,16 @@ export function Sidebar({
       newExpanded.add(path)
     }
     setExpandedFolders(newExpanded)
+  }
+
+  const toggleArtifactsFolder = (path: string) => {
+    const newExpanded = new Set(expandedArtifactsFolders)
+    if (newExpanded.has(path)) {
+      newExpanded.delete(path)
+    } else {
+      newExpanded.add(path)
+    }
+    setExpandedArtifactsFolders(newExpanded)
   }
 
   const handleContextMenu = (e: React.MouseEvent, path: string) => {
@@ -96,7 +115,60 @@ export function Sidebar({
     setContextMenu(null)
   }
 
-  
+  const renderFileTree = (directory: any, rootPath: string, currentPath: string = "") => {
+    const sortedEntries = Object.entries(directory).sort(([nameA, entryA], [nameB, entryB]) => {
+      const isDirA = (entryA as any).directory
+      const isDirB = (entryB as any).directory
+
+      if (isDirA && !isDirB) return -1
+      if (!isDirA && isDirB) return 1
+      return nameA.localeCompare(nameB)
+    })
+
+    return (
+      <div className="text-sm">
+        {sortedEntries.map(([name, entry]) => {
+          const fullPath = currentPath ? `${currentPath}/${name}` : name
+          const isDirectory = (entry as any).directory
+          const isFile = (entry as any).file
+
+          return (
+            <div key={fullPath}>
+              {isDirectory ? (
+                <div>
+                  <div
+                    className="flex items-center gap-2 py-1 px-2 cursor-pointer hover:bg-muted/50"
+                    onClick={() => toggleArtifactsFolder(fullPath)}
+                  >
+                    {expandedArtifactsFolders.has(fullPath) ? (
+                      <ChevronDown size={16} className="flex-shrink-0" />
+                    ) : (
+                      <ChevronRight size={16} className="flex-shrink-0" />
+                    )}
+                    <Folder size={16} className="flex-shrink-0 text-blue-400" />
+                    <span className="truncate">{name}</span>
+                  </div>
+                  {expandedArtifactsFolders.has(fullPath) && (
+                    <div className="ml-4">
+                      {renderFileTree((entry as any).directory, rootPath, fullPath)}
+                    </div>
+                  )}
+                </div>
+              ) : isFile ? (
+                <div
+                  className="flex items-center gap-2 py-1 px-2 cursor-pointer hover:bg-muted/50"
+                  onClick={() => onArtifactFileSelect(fullPath)}
+                >
+                  <File size={16} className="flex-shrink-0 text-gray-400" />
+                  <span className="truncate">{name}</span>
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex overflow-hidden relative">
@@ -191,14 +263,31 @@ export function Sidebar({
           {activeSection === "programs" && (
             <div className="p-3">
               <div className="space-y-3">
-                <div className="p-3 bg-[#2d2d30] rounded border border-[#3e3e42]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Code className="w-4 h-4 text-[#0e639c]" />
-                    <span className="text-sm font-medium text-white">Hello Algorand</span>
+                {deployedContracts.length > 0 ? (
+                  deployedContracts.map((contract, index) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-[#2d2d30] rounded border border-[#3e3e42] cursor-pointer hover:bg-[#37373d] transition-colors"
+                      onClick={() => onContractSelect && onContractSelect(contract)}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Code className="w-4 h-4 text-[#0e639c]" />
+                        <span className="text-sm font-medium text-white">App ID: {contract.appId}</span>
+                      </div>
+                      <div className="text-xs text-[#969696] mb-2">Deployed: {new Date(contract.time).toLocaleString()}</div>
+                      <div className="text-xs text-[#569cd6]">Status: Deployed</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 bg-[#2d2d30] rounded border border-[#3e3e42]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Code className="w-4 h-4 text-[#0e639c]" />
+                      <span className="text-sm font-medium text-white">No Deployed Contracts</span>
+                    </div>
+                    <div className="text-xs text-[#969696] mb-2">Build and deploy contracts to see them here</div>
+                    <div className="text-xs text-[#569cd6]">Status: Ready to Deploy</div>
                   </div>
-                  <div className="text-xs text-[#969696] mb-2">PyTeal Smart Contract</div>
-                  <div className="text-xs text-[#569cd6]">Status: Ready to Deploy</div>
-                </div>
+                )}
               </div>
             </div>
           )}

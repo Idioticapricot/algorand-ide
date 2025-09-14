@@ -234,7 +234,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           };
           
           // Update file contents cache
-          newFileContents[`artifacts/${fileName}`] = content;
+          const artifactPath = `artifacts/${fileName}`;
+          newFileContents[artifactPath] = content;
+          
+          // Store in IndexedDB for persistence
+          await indexedDBManager.saveFile(selectedTemplate, artifactPath, content);
           
         } catch (error) {
           console.error(`Failed to read ${file}:`, error);
@@ -242,9 +246,14 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
     }
     
-    setCurrentFiles(updatedFiles);
-    setFileContents(newFileContents);
+    setCurrentFiles({...updatedFiles});
+    setFileContents({...newFileContents});
     handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
+    
+    // Delayed file tree refresh
+    setTimeout(() => {
+      setCurrentFiles({...updatedFiles});
+    }, 2000);
   }
   
   const handlePyTealBuild = async () => {
@@ -1240,6 +1249,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
             isWebContainerReady={isWebContainerReady}
             fileStructure={currentFiles}
             onArtifactFileSelect={setActiveArtifactFile}
+            deployedContracts={deployedContracts}
+            onContractSelect={(contract) => {
+              setSelectedContract(contract);
+              setIsMethodsModalOpen(true);
+            }}
           />
         </div>
 
@@ -1261,7 +1275,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                 <ArtifactFileViewerPanel
                   filePath={activeArtifactFile}
                   webcontainer={webcontainer}
-                  onDeploy={handleDeploy}
+                  fileContents={fileContents}
+                  selectedTemplate={selectedTemplate}
+                  onDeploy={deployArtifact}
                   onClose={() => setActiveArtifactFile(null)}
                 />
               ) : sidebarSection === "tutorials" ? (
