@@ -54,7 +54,7 @@ export default function HomePage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col justify-between col-span-full sm:col-span-2 lg:col-span-1 self-end hover:scale-105 transition-transform duration-300 ease-in-out shadow-lg shadow-blue-500/50" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
+        {/* <Card className="flex flex-col justify-between col-span-full sm:col-span-2 lg:col-span-1 self-end hover:scale-105 transition-transform duration-300 ease-in-out shadow-lg shadow-blue-500/50" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Play className="h-5 w-5" />
@@ -69,7 +69,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
