@@ -1,5 +1,5 @@
 self.onmessage = async (e) => {
-  const { type, filename, code } = e.data;
+  const { type, filename, code, filepath } = e.data;
 
   if (type === "init") {
     importScripts("https://cdn.jsdelivr.net/pyodide/v0.28.2/full/pyodide.js");
@@ -30,7 +30,46 @@ elapsed
 `;
       const elapsed = self.pyodide.runPython(moduleRun);
 
-      self.postMessage({ type: "compiled", elapsed });
+      // Find all files in the filesystem
+      const findFilesScript = `
+import os
+files = []
+for root, dirs, filenames in os.walk('/'):
+    for filename in filenames:
+        filepath = os.path.join(root, filename)
+        files.append(filepath)
+files
+`;
+      const allFiles = self.pyodide.runPython(findFilesScript);
+      const filesArray = allFiles.toJs();
+      
+      // Console log all files
+      console.log('All files in Pyodide FS:', filesArray);
+      
+      // Read and log specific artifact files
+      const artifactExtensions = ['.teal', '.arc32.json', '.puya.map'];
+      const artifactFiles = filesArray.filter(file => 
+        artifactExtensions.some(ext => file.endsWith(ext))
+      );
+      
+      artifactFiles.forEach(file => {
+        try {
+          const content = self.pyodide.FS.readFile(file, { encoding: 'utf8' });
+          console.log(`${file}:`, content);
+        } catch (e) {
+          console.log(`Could not read ${file}:`, e);
+        }
+      });
+
+      self.postMessage({ type: "compiled", elapsed, files: filesArray });
+    } catch (err) {
+      self.postMessage({ type: "error", error: err.toString() });
+    }
+  }
+  else if (type === "readFile") {
+    try {
+      const content = self.pyodide.FS.readFile(filepath, { encoding: 'utf8' });
+      self.postMessage({ type: "fileRead", content });
     } catch (err) {
       self.postMessage({ type: "error", error: err.toString() });
     }

@@ -202,6 +202,50 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   
   // Pyodide compiler for PuyaPy
   const [pyodideCompiler, setPyodideCompiler] = useState<PyodideCompiler | null>(null)
+  
+  // Update PuyaPy file tree with artifacts
+  const updatePuyaPyFileTree = async (files: string[]) => {
+    if (!pyodideCompiler) return;
+    
+    // Create artifacts directory in file tree if it doesn't exist
+    const updatedFiles = { ...currentFiles };
+    if (!updatedFiles.artifacts) {
+      updatedFiles.artifacts = { directory: {} };
+    }
+    
+    // Add artifact files to the tree
+    const artifactExtensions = ['.teal', '.arc32.json', '.puya.map'];
+    const artifactFiles = files.filter(file => 
+      artifactExtensions.some(ext => file.endsWith(ext))
+    );
+    
+    const newFileContents = { ...fileContents };
+    
+    for (const file of artifactFiles) {
+      const fileName = file.split('/').pop();
+      if (fileName) {
+        try {
+          // Get file content from Pyodide worker
+          const result = await pyodideCompiler.readFile(file);
+          const content = result.content || '';
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          // Update file contents cache
+          newFileContents[`artifacts/${fileName}`] = content;
+          
+        } catch (error) {
+          console.error(`Failed to read ${file}:`, error);
+        }
+      }
+    }
+    
+    setCurrentFiles(updatedFiles);
+    setFileContents(newFileContents);
+    handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
+  }
 
   const [isWebContainerReady, setIsWebContainerReady] = useState(false)
 
@@ -563,6 +607,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         handleTerminalOutput(`Compilation failed: ${result.error}`);
       } else {
         handleTerminalOutput(`Compilation completed in ${result.elapsed?.toFixed(3)}s`);
+        
+        // Update file tree with artifacts
+        if (result.files) {
+          await updatePuyaPyFileTree(result.files);
+        }
       }
     } catch (error) {
       handleTerminalOutput(`Build failed: ${error}`);

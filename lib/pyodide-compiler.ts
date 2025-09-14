@@ -22,22 +22,41 @@ export class PyodideCompiler {
     });
   }
 
-  async compile(filename: string, code: string): Promise<{ elapsed?: number; error?: string }> {
+  async compile(filename: string, code: string): Promise<{ elapsed?: number; error?: string; files?: string[] }> {
     if (!this.worker || !this.isInitialized) {
       throw new Error('Pyodide compiler not initialized');
     }
 
     return new Promise((resolve) => {
       this.worker!.onmessage = (e) => {
-        const { type, elapsed, error } = e.data;
+        const { type, elapsed, error, files } = e.data;
         if (type === 'compiled') {
-          resolve({ elapsed });
+          resolve({ elapsed, files });
         } else if (type === 'error') {
           resolve({ error });
         }
       };
 
       this.worker!.postMessage({ type: 'compile', filename, code });
+    });
+  }
+
+  async readFile(filepath: string): Promise<{ content?: string; error?: string }> {
+    if (!this.worker || !this.isInitialized) {
+      throw new Error('Pyodide compiler not initialized');
+    }
+
+    return new Promise((resolve) => {
+      this.worker!.onmessage = (e) => {
+        const { type, content, error } = e.data;
+        if (type === 'fileRead') {
+          resolve({ content });
+        } else if (type === 'error') {
+          resolve({ error });
+        }
+      };
+
+      this.worker!.postMessage({ type: 'readFile', filepath });
     });
   }
 
