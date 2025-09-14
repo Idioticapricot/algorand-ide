@@ -19,6 +19,7 @@ import { files } from "@/components/files"
 import { tealScriptFiles } from "@/components/tealScriptFiles"
 import { puyaPyfiles } from "@/components/puyaPyfiles"
 import { puyaTsfiles } from "@/components/puyaTsfiles"
+import { indexedDBManager } from "@/lib/indexeddb"
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -45,6 +46,33 @@ interface Wallet {
   mnemonic: string
   transactions: any[]
   algoPrice: number
+}
+
+// Helper function to merge persisted files with initial file structure
+async function mergePersistedFiles(initialFiles: any, persistedFiles: Record<string, string>): Promise<any> {
+  const merged = JSON.parse(JSON.stringify(initialFiles)); // Deep clone
+  
+  for (const [filePath, content] of Object.entries(persistedFiles)) {
+    const pathParts = filePath.split('/');
+    let current = merged;
+    
+    // Navigate to the correct location in the file tree
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const part = pathParts[i];
+      if (!current[part]) {
+        current[part] = { directory: {} };
+      }
+      current = current[part].directory;
+    }
+    
+    // Set the file content
+    const fileName = pathParts[pathParts.length - 1];
+    if (current[fileName]?.file) {
+      current[fileName].file.contents = content;
+    }
+  }
+  
+  return merged;
 }
 
 // Utility to recursively fetch file structure from WebContainer
@@ -178,8 +206,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
     const initWebContainer = async () => {
       try {
+        // Initialize IndexedDB and seed if empty
+        await indexedDBManager.init();
+        await indexedDBManager.seedTemplate(selectedTemplate, initialFiles);
+        
+        // Get persisted files from IndexedDB
+        const persistedFiles = await indexedDBManager.getAllFiles(selectedTemplate);
+        
+        // Merge persisted files with initial files structure
+        const mergedFiles = await mergePersistedFiles(initialFiles, persistedFiles);
+        
         const webcontainerInstance = await WebContainer.boot();
-        await webcontainerInstance.mount(initialFiles);
+        await webcontainerInstance.mount(mergedFiles);
         setWebcontainer(webcontainerInstance);
         setIsWebContainerReady(true);
         webcontainerRef.current = webcontainerInstance;
@@ -213,7 +251,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         webcontainerRef.current = null;
       }
     }
-  }, []);
+  }, [initialFiles, selectedTemplate]);
 
   const handleTerminalOutput = useCallback((data: string) => {
     setTerminalOutput((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${data}`]);
@@ -325,25 +363,38 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     // Initial fetch
     updateFileStructureFromWebContainer();
 
-    const watcher = webcontainer.fs.watch(".", { recursive: true }, (event, filename) => {
+    const watcher = webcontainer.fs.watch(".", { recursive: true }, async (event, filename) => {
       // Ignore changes within node_modules
       if (filename && typeof filename === 'string' && filename.startsWith("node_modules/")) {
         console.log(`Ignoring file change in node_modules: ${event} on ${filename}`);
         return;
       }
       console.log(`File change detected: ${event} on ${filename}`);
+      
+      // If file was modified, sync to IndexedDB
+      if (event === 'change' && filename && typeof filename === 'string') {
+        try {
+          const content = await webcontainer.fs.readFile(filename, 'utf-8');
+          await indexedDBManager.saveFile(selectedTemplate, filename, content);
+        } catch (error) {
+          console.error('Failed to sync file to IndexedDB:', error);
+        }
+      }
+      
       updateFileStructureFromWebContainer();
     });
 
     return () => {
       watcher.close();
     };
-  }, [webcontainer, updateFileStructureFromWebContainer]);
+  }, [webcontainer, updateFileStructureFromWebContainer, selectedTemplate]);
 
   // File operations
   const createFile = async (filePath: string) => {
     if (!webcontainer) return;
     await webcontainer.fs.writeFile(filePath, "");
+    // Persist to IndexedDB
+    await indexedDBManager.saveFile(selectedTemplate, filePath, "");
     // No need to call updateFileStructureFromWebContainer manually, watcher will pick it up
     setOpenFiles((prev) => [...prev, filePath]);
     setActiveFile(filePath);
@@ -354,6 +405,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     const content = await webcontainer.fs.readFile(oldPath, "utf-8");
     await webcontainer.fs.rm(oldPath);
     await webcontainer.fs.writeFile(newPath, content);
+    // Update IndexedDB
+    await indexedDBManager.saveFile(selectedTemplate, newPath, content);
     // Watcher will handle the update
     setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
     if (activeFile === oldPath) {
@@ -844,8 +897,14 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   fileContents={fileContents}
                   onFileSelect={setActiveFile}
                   onFileClose={closeFile}
-                  onFileContentChange={(filePath, content) => {
+                  onFileContentChange={async (filePath, content) => {
                     setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                    // Persist to IndexedDB
+                    try {
+                      await indexedDBManager.saveFile(selectedTemplate, filePath, content);
+                    } catch (error) {
+                      console.error('Failed to persist file to IndexedDB:', error);
+                    }
                   }}
                   webcontainer={webcontainer}
                 />

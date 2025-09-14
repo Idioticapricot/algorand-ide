@@ -12,7 +12,7 @@ interface CodeEditorProps {
   fileContents: Record<string, string>
   onFileSelect: (file: string) => void
   onFileClose: (file: string) => void
-  onFileContentChange: (filePath: string, content: string) => void
+  onFileContentChange: (filePath: string, content: string) => Promise<void>
   webcontainer: WebContainer | null
 }
 
@@ -47,9 +47,9 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
 
-  const handleEditorChange = (value: string | undefined) => {
+  const handleEditorChange = async (value: string | undefined) => {
     if (activeFile && value !== undefined) {
-      onFileContentChange(activeFile, value)
+      await onFileContentChange(activeFile, value)
       setUnsavedFiles((prev) => new Set([...prev, activeFile]))
     }
   }
