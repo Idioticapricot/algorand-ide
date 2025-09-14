@@ -13,6 +13,7 @@ interface CodeEditorProps {
   onFileSelect: (file: string) => void
   onFileClose: (file: string) => void
   onFileContentChange: (filePath: string, content: string) => Promise<void>
+  onSave: () => Promise<void>
   webcontainer: WebContainer | null
 }
 
@@ -43,6 +44,7 @@ export function CodeEditor({
   onFileSelect,
   onFileClose,
   onFileContentChange,
+  onSave,
   webcontainer,
 }: CodeEditorProps) {
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
@@ -54,21 +56,63 @@ export function CodeEditor({
     }
   }
 
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+
   const handleEditorDidMount = (editor: any, monaco: any) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    
     // Define custom theme
     monaco.editor.defineTheme('dracula', {
-    
       ...dracula
     });
     monaco.editor.setTheme('dracula');
-  }
+  };
+
+  // Update Ctrl+S command when activeFile changes
   useEffect(() => {
+    if (editorRef.current && monacoRef.current && activeFile) {
+      const editor = editorRef.current;
+      const monaco = monacoRef.current;
+      
+      // Remove existing command and add new one
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+        await onSave();
+        setUnsavedFiles((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(activeFile);
+          return newSet;
+        });
+      });
+    }
+  }, [activeFile, onSave]);
+  // Clear unsaved indicator when file is saved externally
+  const clearUnsavedFile = (filePath: string) => {
     setUnsavedFiles((prev) => {
-      const newSet = new Set(prev)
-      newSet.delete(activeFile)
-      return newSet
-    })
-  }, [activeFile])
+      const newSet = new Set(prev);
+      newSet.delete(filePath);
+      return newSet;
+    });
+  };
+  
+  // Block browser Ctrl+S and expose clearUnsavedFile function
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener("keydown", handler);
+    
+    if (window) {
+      (window as any).clearUnsavedFile = clearUnsavedFile;
+    }
+    
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   if (openFiles.length === 0) {
     return (

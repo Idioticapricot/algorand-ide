@@ -1129,6 +1129,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       try {
         await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate, indexedDBManager);
         handleTerminalOutput(`Saved: ${activeFile}`);
+        // Clear unsaved indicator
+        if (window && (window as any).clearUnsavedFile) {
+          (window as any).clearUnsavedFile(activeFile);
+        }
       } catch (error) {
         console.error('Failed to save file:', error);
         handleTerminalOutput(`Failed to save: ${activeFile}`);
@@ -1138,6 +1142,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       try {
         await indexedDBManager.saveFile(selectedTemplate, activeFile, content);
         handleTerminalOutput(`Saved: ${activeFile}`);
+        // Clear unsaved indicator
+        if (window && (window as any).clearUnsavedFile) {
+          (window as any).clearUnsavedFile(activeFile);
+        }
       } catch (error) {
         console.error('Failed to save file:', error);
         handleTerminalOutput(`Failed to save: ${activeFile}`);
@@ -1352,6 +1360,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       }
                     }
                   }}
+                  onSave={handleSave}
                   webcontainer={webcontainer}
                 />
               )}
