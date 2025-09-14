@@ -137,39 +137,52 @@ algorand-ide/
 ### Supported Templates
 
 1. **PyTeal** (`files.ts`)
-   - Python-based smart contract development
-   - PyTeal library for TEAL generation
-   - pytest for testing
+   - Python-based smart contract development using PyTeal library
+   - Pyodide-based compilation (no WebContainer)
+   - Generates .teal files directly
+   - IndexedDB persistence for file changes
 
 2. **TealScript** (`tealScriptFiles.ts`)
    - TypeScript-based smart contract development
    - AlgoKit TealScript compiler
+   - WebContainer-based execution
    - Jest for testing
 
 3. **PuyaPy** (`puyaPyfiles.ts`)
-   - Pythonic smart contract development
-   - AlgoPy framework
-   - Simplified syntax
+   - Pythonic smart contract development using AlgoPy
+   - Pyodide-based compilation (no WebContainer)
+   - Generates .teal, .arc32.json, and .puya.map files
+   - IndexedDB persistence for file changes
 
 4. **PuyaTs** (`puyaTsfiles.ts`)
    - TypeScript version of PuyaPy
+   - WebContainer-based execution
    - Type-safe smart contract development
 
 ### Template Structure
 
-Each template includes:
+#### WebContainer Templates (TealScript, PuyaTs)
 - `src/`: Source code files
 - `tests/`: Test files
 - `scripts/`: Deployment scripts
 - `package.json`: Dependencies and scripts
 - `README.md`: Documentation
-- Configuration files (tsconfig.json, requirements.txt)
+- Configuration files (tsconfig.json)
+
+#### Pyodide Templates (PyTeal, PuyaPy)
+- `contract.py`: Main contract file
+- `package.json`: Build scripts
+- `requirements.txt`: Python dependencies
+- `README.md`: Documentation
+- Flat file structure for simplicity
 
 ## Build System
 
-### WebContainer Integration
+### Execution Environments
 
-The IDE uses WebContainer to provide a full Node.js environment in the browser:
+#### WebContainer Integration
+
+Used for TealScript and PuyaTs templates to provide a full Node.js environment:
 
 ```typescript
 // Initialize WebContainer
@@ -180,13 +193,33 @@ await webcontainer.mount(initialFiles);
 const buildProcess = await webcontainer.spawn("npm", ["run", "build"]);
 ```
 
+#### Pyodide Integration
+
+Used for PyTeal and PuyaPy templates for Python execution in the browser:
+
+```typescript
+// Initialize Pyodide compiler
+const compiler = new PyodideCompiler();
+await compiler.init('Pyteal'); // or 'PuyaPy'
+
+// Compile Python code
+const result = await compiler.compile('contract.py', pythonCode);
+```
+
 ### Build Pipeline
 
+#### WebContainer Templates (TealScript, PuyaTs)
 1. **Install**: `npm install` - Install dependencies
 2. **Build**: `npm run build` - Compile smart contracts
 3. **Test**: `npm run test` - Run test suite
 4. **Deploy**: `npm run deploy` - Deploy to Algorand network
 5. **Generate Client**: Generate TypeScript client code
+
+#### Pyodide Templates (PyTeal, PuyaPy)
+1. **Build**: Direct Python execution in Pyodide
+2. **File Discovery**: Automatically find generated artifacts
+3. **Artifact Management**: .teal, .arc32.json, .puya.map files
+4. **Console Logging**: All files and artifacts logged to console
 
 ### Artifact Management
 
@@ -270,6 +303,18 @@ NEXT_PUBLIC_OPENROUTER_API_KEY=your-openrouter-api-key
 HF_API_KEY=your-huggingface-api-key
 ```
 
+### Python Wheels Configuration
+
+#### PyTeal Template
+- **Wheel URL**: `https://files.pythonhosted.org/packages/d4/53/83beac9246e682f22d36bd0c80ab6ec142a680443d51313c302edb810d08/pyteal-0.27.0-py3-none-any.whl`
+- **Execution**: Direct Python script execution
+- **Artifacts**: .teal files
+
+#### PuyaPy Template
+- **Wheel URL**: `/api/whl/puyapy-4.6.1.6-py3-none-any.whl`
+- **Execution**: `runpy.run_module("puyapy")`
+- **Artifacts**: .teal, .arc32.json, .puya.map files
+
 ### Network Configuration
 
 The IDE supports both Algorand TestNet and MainNet:
@@ -320,12 +365,21 @@ const NETWORK_CONFIG = {
 - **Lazy Loading**: Files loaded on-demand
 - **Debounced Updates**: File changes batched
 - **Memory Management**: Large files truncated in display
+- **IndexedDB Persistence**: File changes persisted across sessions
+- **Template Isolation**: Each template has separate file storage
 
-### WebContainer Management
+### Execution Environment Management
 
+#### WebContainer Management (TealScript, PuyaTs)
 - **Single Instance**: One WebContainer per IDE session
 - **Process Cleanup**: Terminate long-running processes
 - **Resource Limits**: Monitor memory usage
+
+#### Pyodide Management (PyTeal, PuyaPy)
+- **Worker Isolation**: Pyodide runs in Web Worker
+- **Template-Specific Wheels**: Different packages per template
+- **File System Access**: Direct access to Pyodide virtual filesystem
+- **Artifact Discovery**: Automatic file enumeration after compilation
 
 ### AI Assistant Optimization
 

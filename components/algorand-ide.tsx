@@ -246,6 +246,95 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     setFileContents(newFileContents);
     handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
   }
+  
+  const handlePyTealBuild = async () => {
+    console.log('PyTeal build called, compiler state:', !!pyodideCompiler);
+    if (!pyodideCompiler) {
+      handleTerminalOutput("Pyodide compiler not ready. Initializing...");
+      try {
+        const compiler = new PyodideCompiler();
+        await compiler.init('Pyteal');
+        setPyodideCompiler(compiler);
+        handleTerminalOutput("Pyodide compiler initialized.");
+      } catch (error) {
+        handleTerminalOutput(`Failed to initialize Pyodide: ${error}`);
+        return;
+      }
+    }
+
+    setIsBuilding(true);
+    handleTerminalOutput("Compiling PyTeal contract...");
+    
+    const compiler = pyodideCompiler || await (async () => {
+      const newCompiler = new PyodideCompiler();
+      await newCompiler.init('Pyteal');
+      setPyodideCompiler(newCompiler);
+      return newCompiler;
+    })();
+    
+    try {
+      const contractFile = fileContents['contract.py'];
+      if (!contractFile) {
+        handleTerminalOutput("No contract.py file found.");
+        return;
+      }
+      
+      const result = await compiler.compile('contract.py', contractFile);
+      
+      if (result.error) {
+        handleTerminalOutput(`Compilation failed: ${result.error}`);
+      } else {
+        handleTerminalOutput(`Compilation completed in ${result.elapsed?.toFixed(3)}s`);
+        
+        if (result.files) {
+          await updatePyTealFileTree(result.files);
+        }
+      }
+    } catch (error) {
+      handleTerminalOutput(`Build failed: ${error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  }
+  
+  const updatePyTealFileTree = async (files: string[]) => {
+    if (!pyodideCompiler) return;
+    
+    const updatedFiles = { ...currentFiles };
+    if (!updatedFiles.artifacts) {
+      updatedFiles.artifacts = { directory: {} };
+    }
+    
+    const artifactExtensions = ['.teal', '.json'];
+    const artifactFiles = files.filter(file => 
+      artifactExtensions.some(ext => file.endsWith(ext))
+    );
+    
+    const newFileContents = { ...fileContents };
+    
+    for (const file of artifactFiles) {
+      const fileName = file.split('/').pop();
+      if (fileName) {
+        try {
+          const result = await pyodideCompiler.readFile(file);
+          const content = result.content || '';
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          newFileContents[`artifacts/${fileName}`] = content;
+          
+        } catch (error) {
+          console.error(`Failed to read ${file}:`, error);
+        }
+      }
+    }
+    
+    setCurrentFiles(updatedFiles);
+    setFileContents(newFileContents);
+    handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
+  }
 
   const [isWebContainerReady, setIsWebContainerReady] = useState(false)
 
@@ -289,17 +378,17 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         // Merge persisted files with initial files structure
         const mergedFiles = await mergePersistedFiles(initialFiles, persistedFiles);
         
-        // Skip WebContainer for PuyaPy template to save resources
-        if (selectedTemplate === 'PuyaPy') {
-          console.log('Skipping WebContainer for PuyaPy template');
+        // Skip WebContainer for PuyaPy and PyTeal templates to save resources
+        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+          console.log(`Skipping WebContainer for ${selectedTemplate} template`);
           setCurrentFiles(mergedFiles);
           setFileContents(getAllFileContents(mergedFiles));
           setIsWebContainerReady(true);
           
-          console.log('Initializing Pyodide compiler for PuyaPy...');
+          console.log(`Initializing Pyodide compiler for ${selectedTemplate}...`);
           const compiler = new PyodideCompiler();
           try {
-            await compiler.init();
+            await compiler.init(selectedTemplate);
             setPyodideCompiler(compiler);
             console.log('Pyodide compiler initialized successfully');
           } catch (error) {
@@ -451,7 +540,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // Set up file system watcher for real-time updates
   useEffect(() => {
-    if (!webcontainer || selectedTemplate === 'PuyaPy') return;
+    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') return;
 
     console.log("Setting up file system watcher for template:");
 
@@ -486,8 +575,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // File operations
   const createFile = async (filePath: string) => {
-    if (selectedTemplate === 'PuyaPy') {
-      // For PuyaPy, only update IndexedDB and local state
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      // For PuyaPy and PyTeal, only update IndexedDB and local state
       await indexedDBManager.saveFile(selectedTemplate, filePath, "");
       setFileContents((prev) => ({ ...prev, [filePath]: "" }));
       setOpenFiles((prev) => [...prev, filePath]);
@@ -505,13 +594,27 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const renameFile = async (oldPath: string, newPath: string) => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      const content = fileContents[oldPath] || '';
+      await indexedDBManager.saveFile(selectedTemplate, newPath, content);
+      setFileContents((prev) => {
+        const updated = { ...prev };
+        updated[newPath] = content;
+        delete updated[oldPath];
+        return updated;
+      });
+      setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
+      if (activeFile === oldPath) {
+        setActiveFile(newPath);
+      }
+      return;
+    }
+    
     if (!webcontainer) return;
     const content = await webcontainer.fs.readFile(oldPath, "utf-8");
     await webcontainer.fs.rm(oldPath);
     await webcontainer.fs.writeFile(newPath, content);
-    // Update IndexedDB
     await indexedDBManager.saveFile(selectedTemplate, newPath, content);
-    // Watcher will handle the update
     setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
     if (activeFile === oldPath) {
       setActiveFile(newPath);
@@ -519,13 +622,27 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const deleteFile = async (filePath: string) => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      setFileContents((prev) => {
+        const updated = { ...prev };
+        delete updated[filePath];
+        return updated;
+      });
+      closeFile(filePath);
+      return;
+    }
+    
     if (!webcontainer) return;
     await webcontainer.fs.rm(filePath);
-    // Watcher will handle the update
     closeFile(filePath);
   };
 
   const handleInstall = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      handleTerminalOutput("Install not needed for Pyodide templates.");
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -547,6 +664,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const handleBuild = async () => {
     if (selectedTemplate === 'PuyaPy') {
       await handlePuyaPyBuild();
+      return;
+    }
+    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      await handlePyTealBuild();
       return;
     }
     
@@ -574,7 +695,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       handleTerminalOutput("Pyodide compiler not ready. Initializing...");
       try {
         const compiler = new PyodideCompiler();
-        await compiler.init();
+        await compiler.init('PuyaPy');
         setPyodideCompiler(compiler);
         handleTerminalOutput("Pyodide compiler initialized.");
       } catch (error) {
@@ -589,7 +710,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     // Use the compiler (either existing or newly created)
     const compiler = pyodideCompiler || await (async () => {
       const newCompiler = new PyodideCompiler();
-      await newCompiler.init();
+      await newCompiler.init('PuyaPy');
       setPyodideCompiler(newCompiler);
       return newCompiler;
     })();
@@ -621,6 +742,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleTest = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      handleTerminalOutput("Tests not implemented for Pyodide templates yet.");
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -646,6 +772,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleDeploy = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      handleTerminalOutput("Use the artifacts panel to deploy contracts for Pyodide templates.");
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -672,6 +803,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleGenerateClient = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      handleTerminalOutput("Client generation not available for Pyodide templates.");
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -702,6 +838,30 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleDownloadSnapshot = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      setIsBuilding(true);
+      handleTerminalOutput("Creating snapshot...");
+      try {
+        const jsonData = JSON.stringify(currentFiles, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedTemplate}-snapshot.json`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        handleTerminalOutput("Snapshot downloaded successfully.");
+      } catch (error) {
+        console.error("Snapshot failed:", error);
+        handleTerminalOutput(`Snapshot failed: ${error}`);
+      } finally {
+        setIsBuilding(false);
+      }
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -815,12 +975,22 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }, []);
 
   const executeDeploy = async (filename: string, args: (string | number)[]) => {
-    if (!webcontainer) return;
     setIsDeploying(true);
     console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
       const artifactPath = `artifacts/${filename}`;
-      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${filename} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      }
+      
       const appSpec = JSON.parse(fileContent);
 
       let contractSpec = appSpec;
@@ -890,11 +1060,21 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const deployArtifact = async (filename: string) => {
-    if (!webcontainer) return;
     console.log("deployArtifact called with filename:", filename);
     try {
       const artifactPath = `artifacts/${filename}`;
-      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${filename} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      }
+      
       const appSpec = JSON.parse(fileContent);
 
       let contractSpec = appSpec;
@@ -924,11 +1104,22 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
   const handleSave = () =>{}
   const executeMethod = async () => {
-    if (!webcontainer || !selectedContract || !selectedMethod) return;
+    if (!selectedContract || !selectedMethod) return;
     setIsDeploying(true);
     try {
       const artifactPath = `artifacts/${selectedContract.artifact}`;
-      const fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${selectedContract.artifact} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
+      }
+      
       const appSpec = JSON.parse(fileContent);
 
       if(!wallet){

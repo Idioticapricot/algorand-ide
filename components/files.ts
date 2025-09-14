@@ -1,10 +1,7 @@
-/** @satisfies {import('@webcontainer/api').FileSystemTree} */
 export const files = {
-  src: {
-    directory: {
-      "main.py": {
-        file: {
-          contents: `from pyteal import *
+  "contract.py": {
+    file: {
+      contents: `from pyteal import *
 
 def approval_program():
     """
@@ -47,205 +44,57 @@ if __name__ == "__main__":
     approval_teal = compileTeal(approval_program(), Mode.Application, version=6)
     clear_state_teal = compileTeal(clear_state_program(), Mode.Application, version=6)
     
+    # Write TEAL files
+    with open("HelloWorld.approval.teal", "w") as f:
+        f.write(approval_teal)
+    
+    with open("HelloWorld.clear.teal", "w") as f:
+        f.write(clear_state_teal)
+    
     print("Approval Program:")
     print(approval_teal)
     print("\nClear State Program:")
     print(clear_state_teal)
 `,
-        },
-      },
-      "contract.py": {
-        file: {
-          contents: `from algosdk import account, mnemonic
-from algosdk.v2client import algod
-from algosdk.transaction import ApplicationCreateTxn, wait_for_confirmation
-import base64
-
-class AlgorandContract:
-    def __init__(self, algod_client):
-        self.algod_client = algod_client
-        self.app_id = None
-    
-    def deploy(self, creator_private_key, approval_program, clear_program):
-        """Deploy the smart contract to Algorand"""
-        creator_address = account.address_from_private_key(creator_private_key)
-        
-        # Get network params
-        params = self.algod_client.suggested_params()
-        
-        # Create application transaction
-        txn = ApplicationCreateTxn(
-            sender=creator_address,
-            sp=params,
-            on_complete=0,  # NoOp
-            approval_program=base64.b64decode(approval_program),
-            clear_program=base64.b64decode(clear_program),
-            global_schema=StateSchema(num_uints=1, num_byte_slices=2),
-            local_schema=StateSchema(num_uints=0, num_byte_slices=0)
-        )
-        
-        # Sign transaction
-        signed_txn = txn.sign(creator_private_key)
-        
-        # Submit transaction
-        tx_id = self.algod_client.send_transaction(signed_txn)
-        
-        # Wait for confirmation
-        confirmed_txn = wait_for_confirmation(self.algod_client, tx_id, 4)
-        
-        # Get application ID
-        self.app_id = confirmed_txn["application-index"]
-        
-        return self.app_id
-`,
-        },
-      },
-      "utils.py": {
-        file: {
-          contents: `
-# Utility functions for Algorand development
-`,
-        },
-      },
     },
   },
-  tests: {
-    directory: {
-      "test_contract.py": {
-        file: {
-          contents: `import pytest
-from algosdk import account
-from src.contract import AlgorandContract
+  "README.md": {
+    file: {
+      contents: `# PyTeal Template
 
-class TestAlgorandContract:
-    def setup_method(self):
-        """Set up test fixtures"""
-        self.test_account = account.generate_account()
-        
-    def test_contract_creation(self):
-        """Test contract creation"""
-        contract = AlgorandContract(None)
-        assert contract.app_id is None
-        
-    def test_account_generation(self):
-        """Test account generation"""
-        assert len(self.test_account[0]) == 58  # Address length
-        assert len(self.test_account[1]) == 64  # Private key length
+This project demonstrates how to build Algorand smart contracts using PyTeal.
+
+## Commands
+
+- "npm install" - Install dependencies
+- "npm run build" - Compile the smart contract
+- "npm run test" - Run tests
+- "npm run deploy" - Deploy to network
 `,
-        },
-      },
-    },
-  },
-  scripts: {
-    directory: {
-      "deploy.py": {
-        file: {
-          contents: `#!/usr/bin/env python3
-"""
-Deployment script for Algorand smart contracts
-"""
-
-import os
-from algosdk.v2client import algod
-from src.main import approval_program, clear_state_program
-from src.contract import AlgorandContract
-
-def main():
-    # Connect to Algorand node
-    algod_address = "https://testnet-api.algonode.cloud"
-    algod_token = ""
-    algod_client = algod.AlgodClient(algod_token, algod_address)
-    
-    # Create contract instance
-    contract = AlgorandContract(algod_client)
-    
-    print("Deploying contract to TestNet...")
-    
-    # Note: You'll need to provide your private key
-    # private_key = "your-private-key-here"
-    # app_id = contract.deploy(private_key, approval_program(), clear_state_program())
-    # print(f"Contract deployed with App ID: {app_id}")
-
-if __name__ == "__main__":
-    main()
-`,
-        },
-      },
     },
   },
   "package.json": {
     file: {
       contents: `{
-  "name": "algorand-project",
-  "type": "module",
-  "dependencies": {
-    "@algorandfoundation/algokit-utils": "^9.0.1",
-    "algosdk": "^3.2.0",
-    "@algorandfoundation/algokit-client-generator": "^5.0.0",
-    "@algorandfoundation/tealscript": "^0.106.3",
-    "@jest/globals": "^29.5.0",
-    "@joe-p/algokit-generate-component": "^0.2.0",
-    "jest": "^29.5.0",
-    "prettier": "^3.0.3",
-    "ts-jest": "^29.1.0",
-    "typescript": "5.0.2"
-  },
+  "name": "pyteal-template",
+  "version": "1.0.0",
+  "description": "PyTeal Algorand Smart Contract Template",
+  "main": "index.js",
   "scripts": {
-    "build": "python src/main.py",
-    "test": "python -m pytest tests/",
-    "deploy": "python scripts/deploy.py",
-    "generate-client": "python scripts/generate_client.py"
-  }
+    "install": "pip install -r requirements.txt",
+    "build": "python contract.py",
+    "test": "echo \"No tests yet\"",
+    "deploy": "echo \"Deployment not implemented yet\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }`,
     },
   },
   "requirements.txt": {
     file: {
-      contents: `pyteal==0.20.1
-py-algorand-sdk==2.7.0
-pytest==7.4.0
-`,
-    },
-  },
-  "README.md": {
-    file: {
-      contents: `# Algorand Smart Contract Project
-
-This project demonstrates how to build and deploy Algorand smart contracts using PyTeal.
-
-## Getting Started
-
-1. Install dependencies:
-   \`\`\`bash
-   pip install -r requirements.txt
-   \`\`\`
-
-2. Build the contract:
-   \`\`\`bash
-   npm run build
-   \`\`\`
-
-3. Run tests:
-   \`\`\`bash
-   npm run test
-   \`\`\`
-
-4. Deploy to TestNet:
-   \`\`\`bash
-   npm run deploy
-   \`\`\`
-
-## Project Structure
-
-- \`src/\` - Source code
-- \`tests/\` - Test files
-- \`scripts/\` - Deployment scripts
-`,
-    },
-  },
-  "algorand.json": {
-    file: {
-      contents: `{}`,
+      contents: `pyteal==0.27.0`,
     },
   },
 }
