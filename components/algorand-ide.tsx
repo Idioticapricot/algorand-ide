@@ -20,6 +20,7 @@ import { tealScriptFiles } from "@/components/tealScriptFiles"
 import { puyaPyfiles } from "@/components/puyaPyfiles"
 import { puyaTsfiles } from "@/components/puyaTsfiles"
 import { indexedDBManager } from "@/lib/indexeddb"
+import { PyodideCompiler } from "@/lib/pyodide-compiler"
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -198,6 +199,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
   const [isBuilding, setIsBuilding] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
+  
+  // Pyodide compiler for PuyaPy
+  const [pyodideCompiler, setPyodideCompiler] = useState<PyodideCompiler | null>(null)
 
   const [isWebContainerReady, setIsWebContainerReady] = useState(false)
 
@@ -241,6 +245,25 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         // Merge persisted files with initial files structure
         const mergedFiles = await mergePersistedFiles(initialFiles, persistedFiles);
         
+        // Skip WebContainer for PuyaPy template to save resources
+        if (selectedTemplate === 'PuyaPy') {
+          console.log('Skipping WebContainer for PuyaPy template');
+          setCurrentFiles(mergedFiles);
+          setFileContents(getAllFileContents(mergedFiles));
+          setIsWebContainerReady(true);
+          
+          console.log('Initializing Pyodide compiler for PuyaPy...');
+          const compiler = new PyodideCompiler();
+          try {
+            await compiler.init();
+            setPyodideCompiler(compiler);
+            console.log('Pyodide compiler initialized successfully');
+          } catch (error) {
+            console.error('Failed to initialize Pyodide compiler:', error);
+          }
+          return;
+        }
+        
         const webcontainerInstance = await WebContainer.boot();
         await webcontainerInstance.mount(mergedFiles);
         setWebcontainer(webcontainerInstance);
@@ -274,6 +297,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       if (webcontainerRef.current && webcontainerRef.current !== 'pending') {
         (webcontainerRef.current as WebContainer).teardown();
         webcontainerRef.current = null;
+      }
+      if (pyodideCompiler) {
+        pyodideCompiler.terminate();
       }
     }
   }, [initialFiles, selectedTemplate]);
@@ -381,7 +407,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // Set up file system watcher for real-time updates
   useEffect(() => {
-    if (!webcontainer) return;
+    if (!webcontainer || selectedTemplate === 'PuyaPy') return;
 
     console.log("Setting up file system watcher for template:");
 
@@ -416,6 +442,15 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // File operations
   const createFile = async (filePath: string) => {
+    if (selectedTemplate === 'PuyaPy') {
+      // For PuyaPy, only update IndexedDB and local state
+      await indexedDBManager.saveFile(selectedTemplate, filePath, "");
+      setFileContents((prev) => ({ ...prev, [filePath]: "" }));
+      setOpenFiles((prev) => [...prev, filePath]);
+      setActiveFile(filePath);
+      return;
+    }
+    
     if (!webcontainer) return;
     await webcontainer.fs.writeFile(filePath, "");
     // Persist to IndexedDB
@@ -466,6 +501,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleBuild = async () => {
+    if (selectedTemplate === 'PuyaPy') {
+      await handlePuyaPyBuild();
+      return;
+    }
+    
     if (!webcontainer) {
       handleTerminalOutput("WebContainer not ready.");
       return;
@@ -483,6 +523,53 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     handleTerminalOutput(`Build process exited with code: ${exitCode}`);
     setIsBuilding(false);
   };
+  
+  const handlePuyaPyBuild = async () => {
+    console.log('PuyaPy build called, compiler state:', !!pyodideCompiler);
+    if (!pyodideCompiler) {
+      handleTerminalOutput("Pyodide compiler not ready. Initializing...");
+      try {
+        const compiler = new PyodideCompiler();
+        await compiler.init();
+        setPyodideCompiler(compiler);
+        handleTerminalOutput("Pyodide compiler initialized.");
+      } catch (error) {
+        handleTerminalOutput(`Failed to initialize Pyodide: ${error}`);
+        return;
+      }
+    }
+
+    setIsBuilding(true);
+    handleTerminalOutput("Compiling PuyaPy contract...");
+    
+    // Use the compiler (either existing or newly created)
+    const compiler = pyodideCompiler || await (async () => {
+      const newCompiler = new PyodideCompiler();
+      await newCompiler.init();
+      setPyodideCompiler(newCompiler);
+      return newCompiler;
+    })();
+    
+    try {
+      const contractFile = fileContents['contract.py'];
+      if (!contractFile) {
+        handleTerminalOutput("No contract.py file found.");
+        return;
+      }
+      
+      const result = await compiler.compile('contract.py', contractFile);
+      
+      if (result.error) {
+        handleTerminalOutput(`Compilation failed: ${result.error}`);
+      } else {
+        handleTerminalOutput(`Compilation completed in ${result.elapsed?.toFixed(3)}s`);
+      }
+    } catch (error) {
+      handleTerminalOutput(`Build failed: ${error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  }
 
   const handleTest = async () => {
     if (!webcontainer) {

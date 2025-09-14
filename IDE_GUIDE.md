@@ -187,6 +187,7 @@ const buildProcess = await webcontainer.spawn("npm", ["run", "build"]);
 3. **Test**: `npm run test` - Run test suite
 4. **Deploy**: `npm run deploy` - Deploy to Algorand network
 5. **Generate Client**: Generate TypeScript client code
+6. **Download Snapshot**: Create complete project backup including node_modules
 
 ### Artifact Management
 
@@ -194,6 +195,39 @@ Built contracts are stored in the `artifacts/` directory:
 - `.teal` files: Compiled TEAL code
 - `.arc32.json` files: ARC-32 application specifications
 - Client generation artifacts
+
+### Snapshot System
+
+The IDE provides two different file tree functions for different purposes:
+
+#### UI File Tree (Excludes node_modules)
+```typescript
+// For file explorer and watcher - excludes node_modules for performance
+async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
+  // Filters out node_modules to keep UI responsive
+  entries = entries.filter((entry: any) => {
+    if (entry.name === "node_modules") {
+      return false; // Always hide node_modules from UI
+    }
+    return true;
+  });
+}
+```
+
+#### Snapshot File Tree (Includes Everything)
+```typescript
+// For complete project backup - includes node_modules
+async function fetchWebContainerFileTreeForSnapshot(fs: any, dir = ".") {
+  // No filtering - captures entire project including dependencies
+  // Results in 50-200MB+ snapshots with full node_modules
+}
+```
+
+**Benefits of Dual Approach:**
+- **UI Performance**: File explorer stays responsive without node_modules clutter
+- **Complete Backups**: Snapshots include all dependencies for full project restoration
+- **Selective Watching**: File system watcher ignores node_modules changes
+- **Large Downloads**: Snapshot files can be 50-200MB+ with complete dependency tree
 
 ## Deployment System
 
@@ -320,6 +354,8 @@ const NETWORK_CONFIG = {
 - **Lazy Loading**: Files loaded on-demand
 - **Debounced Updates**: File changes batched
 - **Memory Management**: Large files truncated in display
+- **Dual File Trees**: Separate functions for UI (fast) and snapshots (complete)
+- **Selective Watching**: File watcher ignores node_modules for performance
 
 ### WebContainer Management
 
