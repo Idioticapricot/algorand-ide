@@ -39,6 +39,7 @@ algorand-ide/
 ├── lib/                         # Utility libraries
 │   ├── utils.ts                 # General utilities
 │   ├── embed.ts                 # Vector embedding utilities
+│   ├── webcontainer-functions.ts # WebContainer file operations
 │   └── code-generator.ts        # Code generation helpers
 └── public/                      # Static assets
 ```
@@ -175,6 +176,76 @@ algorand-ide/
 - `requirements.txt`: Python dependencies
 - `README.md`: Documentation
 - Flat file structure for simplicity
+
+## File System Management
+
+### WebContainer Functions (`lib/webcontainer-functions.ts`)
+
+Utility functions for WebContainer file operations:
+
+```typescript
+// Write file to WebContainer
+export async function writeFileToWebContainer(
+  webcontainer: WebContainer,
+  filePath: string,
+  content: string
+): Promise<void>
+
+// Append content to file
+export async function appendFileToWebContainer(
+  webcontainer: WebContainer,
+  filePath: string,
+  content: string
+): Promise<void>
+
+// Update file with IndexedDB sync
+export async function updateFileInWebContainer(
+  webcontainer: WebContainer,
+  filePath: string,
+  content: string,
+  selectedTemplate: string,
+  indexedDBManager: any
+): Promise<void>
+```
+
+### File Operations
+
+The IDE supports full CRUD operations on files with dual persistence:
+
+```typescript
+// Create file (WebContainer + IndexedDB)
+const createFile = async (filePath: string) => {
+  await updateFileInWebContainer(webcontainer, filePath, "", selectedTemplate, indexedDBManager);
+};
+
+// Update file content (real-time sync)
+const updateFile = async (filePath: string, content: string) => {
+  setFileContents(prev => ({ ...prev, [filePath]: content }));
+  await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
+};
+
+// Save active file
+const handleSave = async () => {
+  const content = fileContents[activeFile];
+  await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate, indexedDBManager);
+};
+```
+
+### File Persistence Strategy
+
+#### WebContainer Templates (TealScript, PuyaTs)
+- **Primary Storage**: WebContainer filesystem for execution
+- **Backup Storage**: IndexedDB for persistence across sessions
+- **Real-time Sync**: Automatic synchronization between both systems
+- **File Watcher**: Real-time UI updates via WebContainer watcher
+- **Save Operation**: Updates both WebContainer and IndexedDB simultaneously
+- **Utility Functions**: Centralized file operations via `webcontainer-functions.ts`
+
+#### Pyodide Templates (PyTeal, PuyaPy)
+- **Primary Storage**: IndexedDB only (no WebContainer)
+- **Execution**: Pyodide virtual filesystem for compilation
+- **Performance**: Reduced memory footprint without WebContainer
+- **Direct Access**: File manipulation directly in browser storage
 
 ## Build System
 
@@ -367,6 +438,8 @@ const NETWORK_CONFIG = {
 - **Memory Management**: Large files truncated in display
 - **IndexedDB Persistence**: File changes persisted across sessions
 - **Template Isolation**: Each template has separate file storage
+- **WebContainer Sync**: Real-time synchronization between IndexedDB and WebContainer
+- **Dual Persistence**: Files saved to both WebContainer and IndexedDB for reliability
 
 ### Execution Environment Management
 
@@ -421,8 +494,10 @@ const NETWORK_CONFIG = {
 
 ### Planned Features (from TODO)
 
-- [ ] Deploy Smart Contract (wallet integration) ✓ Completed
-- [ ] Full file interaction with realtime updates ✓ Completed  
+- [x] Deploy Smart Contract (wallet integration) ✓ Completed
+- [x] Full file interaction with realtime updates ✓ Completed  
+- [x] WebContainer file synchronization ✓ Completed
+- [x] Save functionality with dual persistence ✓ Completed
 - [ ] Tutorial templates from tutorials/ folder
 - [ ] Programs tab with build artifact count
 - [ ] Advanced debugging tools

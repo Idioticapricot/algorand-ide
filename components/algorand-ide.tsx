@@ -21,6 +21,7 @@ import { puyaPyfiles } from "@/components/puyaPyfiles"
 import { puyaTsfiles } from "@/components/puyaTsfiles"
 import { indexedDBManager } from "@/lib/indexeddb"
 import { PyodideCompiler } from "@/lib/pyodide-compiler"
+import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -594,12 +595,15 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
     
     if (!webcontainer) return;
-    await webcontainer.fs.writeFile(filePath, "");
-    // Persist to IndexedDB
-    await indexedDBManager.saveFile(selectedTemplate, filePath, "");
-    // No need to call updateFileStructureFromWebContainer manually, watcher will pick it up
-    setOpenFiles((prev) => [...prev, filePath]);
-    setActiveFile(filePath);
+    
+    try {
+      await updateFileInWebContainer(webcontainer, filePath, "", selectedTemplate, indexedDBManager);
+      // No need to call updateFileStructureFromWebContainer manually, watcher will pick it up
+      setOpenFiles((prev) => [...prev, filePath]);
+      setActiveFile(filePath);
+    } catch (error) {
+      console.error('Failed to create file:', error);
+    }
   };
 
   const renameFile = async (oldPath: string, newPath: string) => {
@@ -620,13 +624,17 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
     
     if (!webcontainer) return;
-    const content = await webcontainer.fs.readFile(oldPath, "utf-8");
-    await webcontainer.fs.rm(oldPath);
-    await webcontainer.fs.writeFile(newPath, content);
-    await indexedDBManager.saveFile(selectedTemplate, newPath, content);
-    setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
-    if (activeFile === oldPath) {
-      setActiveFile(newPath);
+    
+    try {
+      const content = await webcontainer.fs.readFile(oldPath, "utf-8");
+      await webcontainer.fs.rm(oldPath);
+      await updateFileInWebContainer(webcontainer, newPath, content, selectedTemplate, indexedDBManager);
+      setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
+      if (activeFile === oldPath) {
+        setActiveFile(newPath);
+      }
+    } catch (error) {
+      console.error('Failed to rename file:', error);
     }
   };
 
@@ -1111,7 +1119,31 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     }
   };
-  const handleSave = () =>{}
+  const handleSave = async () => {
+    if (!activeFile || !fileContents[activeFile]) return;
+    
+    const content = fileContents[activeFile];
+    
+    // For WebContainer templates, ensure file is synced
+    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+      try {
+        await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate, indexedDBManager);
+        handleTerminalOutput(`Saved: ${activeFile}`);
+      } catch (error) {
+        console.error('Failed to save file:', error);
+        handleTerminalOutput(`Failed to save: ${activeFile}`);
+      }
+    } else {
+      // For Pyodide templates, save to IndexedDB
+      try {
+        await indexedDBManager.saveFile(selectedTemplate, activeFile, content);
+        handleTerminalOutput(`Saved: ${activeFile}`);
+      } catch (error) {
+        console.error('Failed to save file:', error);
+        handleTerminalOutput(`Failed to save: ${activeFile}`);
+      }
+    }
+  }
   const executeMethod = async () => {
     if (!selectedContract || !selectedMethod) return;
     setIsDeploying(true);
@@ -1303,11 +1335,21 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   onFileClose={closeFile}
                   onFileContentChange={async (filePath, content) => {
                     setFileContents((prev) => ({ ...prev, [filePath]: content }))
-                    // Persist to IndexedDB
-                    try {
-                      await indexedDBManager.saveFile(selectedTemplate, filePath, content);
-                    } catch (error) {
-                      console.error('Failed to persist file to IndexedDB:', error);
+                    
+                    // For WebContainer templates, update both WebContainer and IndexedDB
+                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                      try {
+                        await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
+                      } catch (error) {
+                        console.error('Failed to update file in WebContainer:', error);
+                      }
+                    } else {
+                      // For Pyodide templates, only update IndexedDB
+                      try {
+                        await indexedDBManager.saveFile(selectedTemplate, filePath, content);
+                      } catch (error) {
+                        console.error('Failed to persist file to IndexedDB:', error);
+                      }
                     }
                   }}
                   webcontainer={webcontainer}
