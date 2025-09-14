@@ -35,7 +35,7 @@ if (supabaseUrl === 'your-supabase-url' || supabaseKey === 'your-supabase-anon-k
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) => {
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-pro');
+  const [selectedModel, setSelectedModel] = useState<string>('deepseek/deepseek-r1-0528-qwen3-8b:freeg');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +101,11 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
     };
 
     testConnection();
+    
+    // Add a test message to verify markdown rendering
+    console.log('🧪 Testing markdown rendering...');
+    const testMarkdown = '```typescript\nconst hello = "world";\nconsole.log(hello);\n```';
+    console.log('Test markdown:', testMarkdown);
   }, [selectedTemplate]);
 
   // Real Supabase integration for fetching chunks
@@ -204,7 +209,7 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-r1-0528:free",
+          model: selectedModel === 'deepseek-r1-reasoning' ? "deepseek/deepseek-r1-reasoning:free" : "deepseek/deepseek-r1-0528:free",
           messages: [
             { role: "system", content: `You are a helpful Algorand development assistant specializing in ${selectedTemplate}. Use the provided context to answer questions accurately and helpfully. Always format your responses using markdown for better readability. Use code blocks with appropriate language tags for code examples.` },
             { role: "user", content: prompt },
@@ -301,6 +306,8 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
   const markdownComponents = {
     code: ({ node, inline, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
+      console.log('🔍 Code component rendered:', { inline, className, match, children: String(children).substring(0, 50) });
+      
       return !inline && match ? (
         <div className="code-block-container relative group">
           <div className="code-language-badge">
@@ -319,14 +326,14 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
           >
             Copy
           </button>
-          <pre className="bg-gray-800 rounded-lg p-4 overflow-x-auto">
-            <code className={className} {...props}>
+          <pre className="bg-gray-800 rounded-lg p-4 overflow-x-auto border border-gray-600">
+            <code className={`hljs language-${match[1]}`} {...props}>
               {children}
             </code>
           </pre>
         </div>
       ) : (
-        <code className="bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
+        <code className="bg-gray-700 px-1 py-0.5 rounded text-sm border border-gray-600" {...props}>
           {children}
         </code>
       );
@@ -452,8 +459,8 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
-              <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+              <SelectItem value="deepseek/deepseek-r1-0528-qwen3-8b:free">DeepSeek R1 Reasoning /= Qwen3 Coder</SelectItem>
+              <SelectItem value="deepseek-r1-0528">DeepSeek R1 0528</SelectItem>
             </SelectContent>
           </Select>
         </div>

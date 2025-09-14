@@ -101,125 +101,148 @@
   padding: 0.5em;
   background: #1e1e1e;
   color: #d4d4d4;
+  border-radius: 4px;
 }
 
+/* Ensure code blocks have proper styling */
+.ai-chat-prose pre {
+  background-color: #1e1e1e !important;
+  border: 1px solid #3e3e42 !important;
+  border-radius: 6px !important;
+  padding: 1em !important;
+  overflow-x: auto !important;
+  margin: 1em 0 !important;
+  position: relative !important;
+}
+
+.ai-chat-prose pre code {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+  font-size: 0.9em !important;
+  line-height: 1.4 !important;
+  color: #d4d4d4 !important;
+}
+
+/* Force syntax highlighting colors */
 .hljs-keyword {
-  color: #569cd6;
+  color: #569cd6 !important;
 }
 
 .hljs-string {
-  color: #ce9178;
+  color: #ce9178 !important;
 }
 
 .hljs-comment {
-  color: #6a9955;
-  font-style: italic;
+  color: #6a9955 !important;
+  font-style: italic !important;
 }
 
 .hljs-number {
-  color: #b5cea8;
+  color: #b5cea8 !important;
 }
 
 .hljs-function {
-  color: #dcdcaa;
+  color: #dcdcaa !important;
 }
 
 .hljs-class {
-  color: #4ec9b0;
+  color: #4ec9b0 !important;
 }
 
 .hljs-variable {
-  color: #9cdcfe;
+  color: #9cdcfe !important;
 }
 
 .hljs-operator {
-  color: #d4d4d4;
+  color: #d4d4d4 !important;
 }
 
 .hljs-punctuation {
-  color: #d4d4d4;
+  color: #d4d4d4 !important;
 }
 
 .hljs-property {
-  color: #9cdcfe;
+  color: #9cdcfe !important;
 }
 
 .hljs-title {
-  color: #dcdcaa;
+  color: #dcdcaa !important;
 }
 
 .hljs-params {
-  color: #9cdcfe;
+  color: #9cdcfe !important;
 }
 
 .hljs-built_in {
-  color: #4ec9b0;
+  color: #4ec9b0 !important;
 }
 
 .hljs-literal {
-  color: #569cd6;
+  color: #569cd6 !important;
 }
 
 .hljs-type {
-  color: #4ec9b0;
+  color: #4ec9b0 !important;
 }
 
 .hljs-attr {
-  color: #9cdcfe;
+  color: #9cdcfe !important;
 }
 
 .hljs-tag {
-  color: #569cd6;
+  color: #569cd6 !important;
 }
 
 .hljs-name {
-  color: #569cd6;
+  color: #569cd6 !important;
 }
 
 .hljs-selector {
-  color: #d7ba7d;
+  color: #d7ba7d !important;
 }
 
 .hljs-selector-id {
-  color: #d7ba7d;
+  color: #d7ba7d !important;
 }
 
 .hljs-selector-class {
-  color: #d7ba7d;
+  color: #d7ba7d !important;
 }
 
 .hljs-selector-attr {
-  color: #d7ba7d;
+  color: #d7ba7d !important;
 }
 
 .hljs-selector-pseudo {
-  color: #d7ba7d;
+  color: #d7ba7d !important;
 }
 
 .hljs-addition {
-  background-color: #144212;
-  color: #6a9955;
+  background-color: #144212 !important;
+  color: #6a9955 !important;
 }
 
 .hljs-deletion {
-  background-color: #600;
-  color: #ce9178;
+  background-color: #600 !important;
+  color: #ce9178 !important;
 }
 
 .hljs-meta {
-  color: #9cdcfe;
+  color: #9cdcfe !important;
 }
 
 .hljs-section {
-  color: #dcdcaa;
+  color: #dcdcaa !important;
 }
 
 .hljs-emphasis {
-  font-style: italic;
+  font-style: italic !important;
 }
 
 .hljs-strong {
-  font-weight: bold;
+  font-weight: bold !important;
 }
 
 /* AI Chat Markdown Prose Styles */
@@ -322,6 +345,7 @@
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  z-index: 10;
 }
 
 /* Copy button styling */
@@ -338,6 +362,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   opacity: 0;
+  z-index: 10;
 }
 
 .copy-button:hover {
@@ -347,6 +372,12 @@
 
 .code-block-container:hover .copy-button {
   opacity: 1;
+}
+
+/* Ensure the copy button is visible on hover */
+.code-block-container:hover .copy-button:hover {
+  background: #4ec9b0;
+  color: #1e1e1e;
 }
 
 .ai-chat-prose a {
@@ -470,4 +501,46 @@
   top: 0.2em;
   opacity: 0.3;
   font-family: serif;
+}
+
+/* Markdown content styling */
+.markdown-content {
+  color: #d4d4d4;
+  line-height: 1.6;
+}
+
+.markdown-content pre {
+  background-color: #1e1e1e !important;
+  border: 1px solid #3e3e42 !important;
+  border-radius: 6px !important;
+  padding: 1em !important;
+  overflow-x: auto !important;
+  margin: 1em 0 !important;
+  position: relative !important;
+}
+
+.markdown-content pre code {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+  font-size: 0.9em !important;
+  line-height: 1.4 !important;
+  color: #d4d4d4 !important;
+}
+
+/* Ensure syntax highlighting works */
+.markdown-content .hljs {
+  background: #1e1e1e !important;
+  color: #d4d4d4 !important;
+}
+
+.markdown-content code:not(pre code) {
+  background-color: #2d2d30 !important;
+  color: #4ec9b0 !important;
+  padding: 0.2em 0.4em !important;
+  border-radius: 4px !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+  font-size: 0.9em !important;
+  border: 1px solid #3e3e42 !important;
 }
