@@ -24,11 +24,11 @@ interface Message {
 }
 
 // Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'your-supabase-url';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://toqvsuthxooqjelcayhm.supabase.co";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key';
 
 // Validate environment variables
-if (supabaseUrl === 'your-supabase-url' || supabaseKey === 'your-supabase-anon-key') {
+if (supabaseUrl === "https://toqvsuthxooqjelcayhm.supabase.co") {
   console.warn('⚠️ Supabase environment variables not configured. Using fallback mode.');
 }
 
