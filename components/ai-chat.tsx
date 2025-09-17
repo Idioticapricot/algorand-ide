@@ -15,6 +15,9 @@ import { getEmbedding, cosineSimilarity } from "@/lib/embed";
 interface AIChatProps {
   title: string;
   selectedTemplate?: string;
+  activeFile?: string;
+  fileContent?: string;
+  onFileUpdate?: (filePath: string, content: string) => void;
 }
 
 interface Message {
@@ -34,8 +37,8 @@ if (supabaseUrl === "https://toqvsuthxooqjelcayhm.supabase.co") {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) => {
-  const [selectedModel, setSelectedModel] = useState<string>('deepseek/deepseek-r1-0528-qwen3-8b:freeg');
+const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate }) => {
+  const [selectedModel, setSelectedModel] = useState<string>('deepseek/deepseek-chat:free');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -196,11 +199,22 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
     }
   };
 
+  // Extract code from AI response using regex
+  const extractCodeFromResponse = (response: string): string | null => {
+    const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)\n```/;
+    const match = response.match(codeBlockRegex);
+    return match ? match[1].trim() : null;
+  };
+
   // Simulated OpenRouter API call (you'll need to replace with actual API key)
-  const askOpenRouter = async (prompt: string) => {
+  const askOpenRouter = async (prompt: string, isCodeEdit: boolean = false) => {
     try {
       console.log(`🤖 Sending request to OpenRouter API...`);
       console.log(`📝 Prompt length: ${prompt.length} characters`);
+      
+      const systemPrompt = isCodeEdit 
+        ? `You are a coding assistant integrated into an IDE. The user will provide the current code file. Your task is to return the full modified code with the requested changes applied. Do not explain, just return the updated code wrapped in a single code block. Preserve formatting, comments, and structure. Do not remove unrelated code.`
+        : `You are a helpful Algorand development assistant specializing in ${selectedTemplate}. Use the provided context to answer questions accurately and helpfully. Always format your responses using markdown for better readability. Use code blocks with appropriate language tags for code examples.`;
       
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -209,9 +223,9 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: selectedModel === 'deepseek-r1-reasoning' ? "deepseek/deepseek-r1-reasoning:free" : "deepseek/deepseek-r1-0528:free",
+          model: selectedModel,
           messages: [
-            { role: "system", content: `You are a helpful Algorand development assistant specializing in ${selectedTemplate}. Use the provided context to answer questions accurately and helpfully. Always format your responses using markdown for better readability. Use code blocks with appropriate language tags for code examples.` },
+            { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
           ],
         }),
@@ -222,12 +236,22 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
       }
 
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(`API Error: ${data.error.message || 'Unknown error'}`);
+      }
+      
       console.log(`✅ OpenRouter API response received successfully`);
       console.log(`🤖 AI response length: ${data.choices[0].message.content.length} characters`);
       
       return data.choices[0].message.content;
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ OpenRouter API error:", error);
+      
+      if (error.message?.includes('rate-limited') || error.message?.includes('429')) {
+        return "The AI service is currently rate-limited. Please try switching to a different model or wait a moment before trying again.";
+      }
+      
       return "I apologize, but I'm having trouble connecting to the AI service right now. Please try again later.";
     }
   };
@@ -271,7 +295,24 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
 
         // Step 4: Generate answer using OpenRouter
         console.log(`🤖 Step 4: Generating answer with context...`);
-        const prompt = `Use the following context to answer the question about ${selectedTemplate} development:\n\nContext:\n${context}\n\nQuestion: ${userMessage}\n\nPlease provide a helpful and accurate answer based on the context provided. Format your response using markdown for better readability. Use code blocks with appropriate language tags for code examples.`;
+        
+        // Check if user wants to edit current file
+        const isCodeEditRequest = activeFile && fileContent && (
+          userMessage.toLowerCase().includes('edit') ||
+          userMessage.toLowerCase().includes('modify') ||
+          userMessage.toLowerCase().includes('change') ||
+          userMessage.toLowerCase().includes('update') ||
+          userMessage.toLowerCase().includes('add') ||
+          userMessage.toLowerCase().includes('fix')
+        );
+        
+        let prompt: string;
+        if (isCodeEditRequest) {
+          const filePreview = fileContent.split('\n').slice(0, 5).join('\n');
+          prompt = `Current file: ${activeFile}\n\nFile preview (first 5 lines):\n${filePreview}...\n\nFull file content:\n${fileContent}\n\nUser request: ${userMessage}\n\nReturn the complete modified file with the requested changes.`;
+        } else {
+          prompt = `Use the following context to answer the question about ${selectedTemplate} development:\n\nContext:\n${context}\n\nQuestion: ${userMessage}\n\nPlease provide a helpful and accurate answer based on the context provided. Format your response using markdown for better readability. Use code blocks with appropriate language tags for code examples.`;
+        }
         
         console.log(`📝 Final prompt length: ${prompt.length} characters`);
         console.log(`📋 Full prompt being sent to AI:`);
@@ -279,7 +320,20 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
         console.log(prompt);
         console.log(`--- END PROMPT ---`);
         
-        const answer = await askOpenRouter(prompt);
+        const answer = await askOpenRouter(prompt, isCodeEditRequest);
+        
+        // If it's a code edit request, extract and apply the code
+        if (isCodeEditRequest && activeFile && onFileUpdate) {
+          const extractedCode = extractCodeFromResponse(answer);
+          if (extractedCode) {
+            console.log(`🔧 Extracted code for ${activeFile}:`, extractedCode.substring(0, 100) + '...');
+            onFileUpdate(activeFile, extractedCode);
+            toast({
+              title: "File updated!",
+              description: `${activeFile} has been updated with AI suggestions.`,
+            });
+          }
+        }
 
         console.log(`✅ AI response generated successfully`);
         setMessages((prevMessages) => [...prevMessages, { type: 'ai', text: answer }]);
@@ -453,14 +507,17 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal" }) =
         <span className="text-[#cccccc]">{title}</span>
         <div className="flex items-center gap-2">
           <span className="text-xs">Template: {selectedTemplate}</span>
+          {activeFile && <span className="text-xs text-blue-400">File: {activeFile.split('/').pop()}</span>}
           <span className="text-xs">Model:</span>
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger className="w-[180px] h-7 text-xs">
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="deepseek/deepseek-r1-0528-qwen3-8b:free">DeepSeek R1 Reasoning /= Qwen3 Coder</SelectItem>
-              <SelectItem value="deepseek-r1-0528">DeepSeek R1 0528</SelectItem>
+              <SelectItem value="deepseek/deepseek-chat:free">DeepSeek Chat (Free)</SelectItem>
+              <SelectItem value="google/gemini-flash-1.5:free">Gemini Flash 1.5 (Free)</SelectItem>
+              <SelectItem value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (Free)</SelectItem>
+              <SelectItem value="microsoft/phi-3-mini-128k-instruct:free">Phi-3 Mini (Free)</SelectItem>
             </SelectContent>
           </Select>
         </div>

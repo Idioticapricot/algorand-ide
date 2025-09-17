@@ -1409,7 +1409,30 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
               />
             </div>
             <div className="flex-1">
-              <AIChat title="AI CHAT" selectedTemplate={selectedTemplate} />
+              <AIChat 
+                title="AI CHAT" 
+                selectedTemplate={selectedTemplate}
+                activeFile={activeFile}
+                fileContent={activeFile ? fileContents[activeFile] : undefined}
+                onFileUpdate={async (filePath: string, content: string) => {
+                  setFileContents((prev) => ({ ...prev, [filePath]: content }));
+                  
+                  // Update both WebContainer and IndexedDB
+                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                    try {
+                      await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
+                    } catch (error) {
+                      console.error('Failed to update file in WebContainer:', error);
+                    }
+                  } else {
+                    try {
+                      await indexedDBManager.saveFile(selectedTemplate, filePath, content);
+                    } catch (error) {
+                      console.error('Failed to persist file to IndexedDB:', error);
+                    }
+                  }
+                }}
+              />
             </div>
           </div>
         </div>

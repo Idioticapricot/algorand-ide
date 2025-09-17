@@ -1,5 +1,5 @@
 
-const HF_API_KEY = "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";
+const HF_API_KEY = "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";
 const API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
 
 export async function getEmbedding(text: string) {
