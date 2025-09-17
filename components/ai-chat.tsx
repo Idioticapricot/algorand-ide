@@ -38,7 +38,7 @@ if (supabaseUrl === "https://toqvsuthxooqjelcayhm.supabase.co") {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate }) => {
-  const [selectedModel, setSelectedModel] = useState<string>('deepseek/deepseek-chat:free');
+  const [selectedModel, setSelectedModel] = useState<string>('meta-llama/llama-3.2-3b-instruct:free');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -514,10 +514,7 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="deepseek/deepseek-chat:free">DeepSeek Chat (Free)</SelectItem>
-              <SelectItem value="google/gemini-flash-1.5:free">Gemini Flash 1.5 (Free)</SelectItem>
               <SelectItem value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (Free)</SelectItem>
-              <SelectItem value="microsoft/phi-3-mini-128k-instruct:free">Phi-3 Mini (Free)</SelectItem>
             </SelectContent>
           </Select>
         </div>
