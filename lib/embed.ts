@@ -1,5 +1,5 @@
 
-const HF_API_KEY = process.env.HF_API_KEY;
+const HF_API_KEY = process.env.NEXT_PUBLIC_HF_API_KEY || process.env.HF_API_KEY;
 const API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
 
 export async function getEmbedding(text: string) {
