@@ -22,6 +22,7 @@ import { puyaTsfiles } from "@/components/puyaTsfiles"
 import { indexedDBManager } from "@/lib/indexeddb"
 import { PyodideCompiler } from "@/lib/pyodide-compiler"
 import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
+import { replacePuyaUrls } from "@/tests/replace.js"
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -675,6 +676,20 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }));
     const exitCode = await installProcess.exit;
     handleTerminalOutput(`Install process exited with code: ${exitCode}`);
+    
+    // Run URL replacement after install for PuyaTs template
+    if (selectedTemplate === 'PuyaTs' && exitCode === 0) {
+      setTimeout(async () => {
+        handleTerminalOutput("Replacing puya URLs...");
+        const success = await replacePuyaUrls(webcontainer);
+        if (success) {
+          handleTerminalOutput("Puya URLs replaced successfully");
+        } else {
+          handleTerminalOutput("Failed to replace puya URLs");
+        }
+      }, 3000);
+    }
+    
     setIsInstalling(false);
   };
 
