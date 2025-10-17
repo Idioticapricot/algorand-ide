@@ -62,7 +62,7 @@ export function WebContainerTerminal({
       const exitCode = await process.exit;
       onAddOutput(`Command exited with code: ${exitCode}`);
     } catch (error: any) {
-      addOutputLine(`Error executing command: ${error.message}`);
+      onAddOutput(`Error executing command: ${error.message}`);
     } finally {
       setIsProcessing(false);
       inputRef.current?.focus();
@@ -117,11 +117,24 @@ export function WebContainerTerminal({
         className="flex-1 overflow-auto p-3 font-mono text-sm text-[#cccccc] cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
-        {output.map((line, index) => (
-          <div key={index} className="whitespace-pre-wrap">
-            {line}
-          </div>
-        ))}
+        {output.map((line, index) => {
+          // Clean ANSI escape codes and control characters
+          const cleanLine = line
+            .replace(/\u001b\[[0-9;]*[mGKH]/g, '') // Remove ANSI escape codes
+            .replace(/\r/g, '') // Remove carriage returns
+            .replace(/\[\d+G/g, '') // Remove cursor positioning
+            .replace(/\[\d*K/g, '') // Remove line clearing
+            .trim();
+          
+          // Skip empty lines from control characters
+          if (!cleanLine) return null;
+          
+          return (
+            <div key={index} className="whitespace-pre-wrap" style={{ fontFamily: 'monospace' }}>
+              {cleanLine}
+            </div>
+          );
+        })}
         <div className="flex items-center mt-1">
           <span className="text-green-400">$ </span>
           <input

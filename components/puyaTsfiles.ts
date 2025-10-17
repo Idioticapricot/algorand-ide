@@ -19,14 +19,16 @@ export default class HelloWorldContract extends BaseContract {
     },
   },
     }
+  },
+  output :{
+    directory:{}
   }
   
   ,
   "package.json": {
     file: {
       contents: `{
-  "dependencies": {
-    "@algorandfoundation/algorand-typescript": "^1.0.0",
+  "dependencies": {    "@algorandfoundation/algorand-typescript": "^1.0.0",
         "@algorandfoundation/puya-ts": "^1.0.0-beta.72"
 
   }
