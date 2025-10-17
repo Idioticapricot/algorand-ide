@@ -1,5 +1,5 @@
 "use client"
-import { Square, Hammer, TestTube, Rocket, ChevronDown, Download } from "lucide-react"
+import { Square, Hammer, Rocket, ChevronDown, Download, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,11 +12,11 @@ import { Save } from "lucide-react"
 
 interface BuildToolbarProps {
   onBuild: () => void
-  onTest: () => void
   onDeploy: () => void
   onInstall: () => void;
   onGenerateClient: () => void;
   onDownloadSnapshot: () => void;
+  onPublishPlayground: () => void;
   onSave: () => void;
   isBuilding: boolean
   isInstalling: boolean;
@@ -26,11 +26,11 @@ interface BuildToolbarProps {
 
 export function BuildToolbar({ 
   onBuild, 
-  onTest, 
   onDeploy, 
   onInstall, 
   onGenerateClient, 
   onDownloadSnapshot,
+  onPublishPlayground,
   onSave,
   isBuilding, 
   isInstalling, 
@@ -60,17 +60,6 @@ export function BuildToolbar({
         </Button>
 
         <Button
-          onClick={onTest}
-          disabled={isBuilding || !isWebContainerReady}
-          size="sm"
-          variant="outline"
-          className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
-        >
-          <TestTube className="w-4 h-4 mr-2" />
-          Test
-        </Button>
-
-        <Button
           onClick={onDeploy}
           disabled={isBuilding || !isWebContainerReady}
           size="sm"
@@ -97,18 +86,28 @@ export function BuildToolbar({
             console.log('Download Snapshot button clicked');
             onDownloadSnapshot();
           }}
-          disabled={isBuilding || !isWebContainerReady}
+          disabled={isBuilding}
           size="sm"
           variant="outline"
           className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
         >
           <Download className="w-4 h-4 mr-2" />
-          Download Snapshot
+          Download Code
+        </Button>
+
+        <Button
+          onClick={onPublishPlayground}
+          disabled={isBuilding}
+          size="sm"
+          className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
+        >
+          <Play className="w-4 h-4 mr-2" />
+          Publish on Playground
         </Button>
 
         <Button
           onClick={onSave}
-          disabled={isBuilding || !isWebContainerReady}
+          disabled={isBuilding}
           size="sm"
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 h-8"
         >

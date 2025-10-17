@@ -23,6 +23,7 @@ import { indexedDBManager } from "@/lib/indexeddb"
 import { PyodideCompiler } from "@/lib/pyodide-compiler"
 import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
 import { replacePuyaUrls } from "@/tests/replace.js"
+import { publishToPlayground } from "@/lib/playground-api"
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -145,8 +146,14 @@ async function fetchWebContainerFileTreeForSnapshot(fs: any, dir = ".") {
   return tree;
 }
 
-export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string }) {
+export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName, isReadOnly = false }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string, isReadOnly?: boolean }) {
   const [currentFiles, setCurrentFiles] = useState<any>(initialFiles);
+  
+  // Update currentFiles when initialFiles changes (e.g., template loaded)
+  useEffect(() => {
+    setCurrentFiles(initialFiles);
+    setFileContents(getAllFileContents(initialFiles));
+  }, [initialFiles]);
 
   const getAllFilePaths = (tree: any, currentPath: string = '') => {
     let paths: string[] = [];
@@ -389,8 +396,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         // Merge persisted files with initial files structure
         const mergedFiles = await mergePersistedFiles(initialFiles, persistedFiles);
         
-        // Skip WebContainer for PuyaPy and PyTeal templates to save resources
-        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+        // Skip WebContainer for PuyaPy, PyTeal, and when loading templates
+        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || isReadOnly) {
           console.log(`Skipping WebContainer for ${selectedTemplate} template`);
           setCurrentFiles(mergedFiles);
           setFileContents(getAllFileContents(mergedFiles));
@@ -551,7 +558,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // Set up file system watcher for real-time updates
   useEffect(() => {
-    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') return;
+    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || isReadOnly) return;
 
     console.log("Setting up file system watcher for template:");
 
@@ -586,7 +593,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // File operations
   const createFile = async (filePath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'Pyteal') {
       // For PuyaPy and PyTeal, only update IndexedDB and local state
       await indexedDBManager.saveFile(selectedTemplate, filePath, "");
       setFileContents((prev) => ({ ...prev, [filePath]: "" }));
@@ -608,7 +615,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const renameFile = async (oldPath: string, newPath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'Pyteal') {
       const content = fileContents[oldPath] || '';
       await indexedDBManager.saveFile(selectedTemplate, newPath, content);
       setFileContents((prev) => {
@@ -640,7 +647,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const deleteFile = async (filePath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'Pyteal') {
       setFileContents((prev) => {
         const updated = { ...prev };
         delete updated[filePath];
@@ -656,7 +663,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleInstall = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'Pyteal') {
       handleTerminalOutput("Install not needed for Pyodide templates.");
       return;
     }
@@ -698,7 +705,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       await handlePuyaPyBuild();
       return;
     }
-    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'Pyteal') {
       await handlePyTealBuild();
       return;
     }
@@ -868,6 +875,26 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const handleStop = () => {
     setIsBuilding(false)
   }
+
+  const handlePublishPlayground = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      publishToPlayground(currentFiles, selectedTemplate);
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    try {
+      const allFiles = await fetchWebContainerFileTreeForSnapshot(webcontainer.fs, ".");
+      publishToPlayground(allFiles, selectedTemplate);
+    } catch (error) {
+      console.error("Publish failed:", error);
+      handleTerminalOutput(`Publish failed: ${error}`);
+    }
+  };
 
   const handleDownloadSnapshot = async () => {
     if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
@@ -1140,7 +1167,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     const content = fileContents[activeFile];
     
     // For WebContainer templates, ensure file is synced
-    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'Pyteal') {
       try {
         await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate, indexedDBManager);
         handleTerminalOutput(`Saved: ${activeFile}`);
@@ -1271,19 +1298,21 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       </div>
 
       {/* Build Toolbar */}
-      <BuildToolbar
-        onBuild={handleBuild}
-        onTest={handleTest}
-        onDeploy={handleDeploy}
-        onGenerateClient={handleGenerateClient}
-        onInstall={handleInstall}
-        onDownloadSnapshot={handleDownloadSnapshot}
-        isBuilding={isBuilding}
-        isInstalling={isInstalling}
-        onStop={handleStop}
-        isWebContainerReady={isWebContainerReady}
-        onSave={handleSave}
-      />
+      {!isReadOnly && (
+        <BuildToolbar
+          onBuild={handleBuild}
+          onDeploy={handleDeploy}
+          onGenerateClient={handleGenerateClient}
+          onInstall={handleInstall}
+          onDownloadSnapshot={handleDownloadSnapshot}
+          onPublishPlayground={handlePublishPlayground}
+          isBuilding={isBuilding}
+          isInstalling={isInstalling}
+          onStop={handleStop}
+          isWebContainerReady={isWebContainerReady}
+          onSave={handleSave}
+        />
+      )}
 
       {/* Main Layout */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden">
@@ -1360,7 +1389,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                     setFileContents((prev) => ({ ...prev, [filePath]: content }))
                     
                     // For WebContainer templates, update both WebContainer and IndexedDB
-                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'Pyteal') {
                       try {
                         await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
                       } catch (error) {
@@ -1433,7 +1462,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   setFileContents((prev) => ({ ...prev, [filePath]: content }));
                   
                   // Update both WebContainer and IndexedDB
-                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'Pyteal') {
                     try {
                       await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
                     } catch (error) {
