@@ -6,13 +6,11 @@ export const puyaTsfiles = {
 
       "helloworld.algo.ts": {
     file: {
-      contents: `import { BaseContract, log, op } from '@algorandfoundation/algorand-typescript'
+      contents: `import { Contract } from '@algorandfoundation/algorand-typescript'
 
-export default class HelloWorldContract extends BaseContract {
-  public approvalProgram(): boolean {
-    const name = String(op.Txn.applicationArgs(0))
-    log("Hello")
-    return true
+export class HelloWorld extends Contract {
+  public hello(name: string): string {
+    return \`Hello \${name}\`
   }
 }
 `,

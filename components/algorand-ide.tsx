@@ -718,6 +718,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         
         handleTerminalOutput(`Compiling ${filename}...`);
         
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        
         const response = await fetch('/api/compile', {
           method: 'POST',
           headers: {
@@ -725,9 +728,12 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           },
           body: JSON.stringify({
             filename,
-            code
-          })
+            codeBase64: btoa(code)
+          }),
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         const result = await response.json();
         
@@ -742,7 +748,12 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           
           // Add compiled files to artifacts
           for (const [fileName, fileData] of Object.entries(result.files)) {
-            const content = (fileData as any).data;
+            const data = (fileData as any).data;
+            const encoding = (fileData as any).encoding;
+            
+            // Decode base64 if needed
+            const content = encoding === 'base64' ? atob(data) : data;
+            
             updatedFiles.artifacts.directory[fileName] = {
               file: { contents: content }
             };
@@ -761,8 +772,12 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           handleTerminalOutput(`Failed to compile ${filename}: ${result.error || 'Unknown error'}`);
         }
       }
-    } catch (error) {
-      handleTerminalOutput(`Build failed: ${error}`);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        handleTerminalOutput(`Compilation timeout: Request took too long`);
+      } else {
+        handleTerminalOutput(`Build failed: ${error.message || error}`);
+      }
     } finally {
       setIsBuilding(false);
     }
