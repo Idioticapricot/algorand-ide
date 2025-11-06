@@ -14,12 +14,9 @@ interface BuildToolbarProps {
   onBuild: () => void
   onTest: () => void
   onDeploy: () => void
-  onInstall: () => void;
   onGenerateClient: () => void;
-  onDownloadSnapshot: () => void;
   onSave: () => void;
   isBuilding: boolean
-  isInstalling: boolean;
   onStop: () => void
   isWebContainerReady: boolean
 }
@@ -28,30 +25,19 @@ export function BuildToolbar({
   onBuild, 
   onTest, 
   onDeploy, 
-  onInstall, 
-  onGenerateClient, 
-  onDownloadSnapshot,
+  onGenerateClient,
   onSave,
   isBuilding, 
-  isInstalling, 
   onStop, 
   isWebContainerReady
 }: BuildToolbarProps) {
   return (
     <div className="h-12 bg-[#2d2d30] border-b border-[#3e3e42] flex items-center justify-between px-4">
       <div className="flex items-center gap-2">
-        <Button
-          onClick={onInstall}
-          disabled={isBuilding || isInstalling || !isWebContainerReady}
-          size="sm"
-          className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
-        >
-          <Hammer className="w-4 h-4 mr-2" />
-          Install
-        </Button>
+
         <Button
           onClick={onBuild}
-          disabled={isBuilding || isInstalling || !isWebContainerReady}
+          disabled={isBuilding || !isWebContainerReady}
           size="sm"
           className="bg-[#0e639c] hover:bg-[#1177bb] text-white px-4 py-2 h-8"
         >
@@ -92,19 +78,7 @@ export function BuildToolbar({
           Generate Client
         </Button>
 
-        <Button
-          onClick={() => {
-            console.log('Download Snapshot button clicked');
-            onDownloadSnapshot();
-          }}
-          disabled={isBuilding || !isWebContainerReady}
-          size="sm"
-          variant="outline"
-          className="border-[#3e3e42] text-[#cccccc] hover:bg-[#37373d] px-4 py-2 h-8 bg-transparent"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Download Snapshot
-        </Button>
+
 
         <Button
           onClick={onSave}

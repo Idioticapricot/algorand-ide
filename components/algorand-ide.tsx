@@ -395,8 +395,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         // Merge persisted files with initial files structure
         const mergedFiles = await mergePersistedFiles(initialFiles, persistedFiles);
         
-        // Skip WebContainer for PuyaPy and PyTeal templates to save resources
-        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+        // Skip WebContainer for PuyaPy, PyTeal, and PuyaTs templates to save resources
+        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
           console.log(`Skipping WebContainer for ${selectedTemplate} template`);
           setCurrentFiles(mergedFiles);
           setFileContents(getAllFileContents(mergedFiles));
@@ -557,7 +557,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // Set up file system watcher for real-time updates
   useEffect(() => {
-    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') return;
+    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') return;
 
     console.log("Setting up file system watcher for template:");
 
@@ -592,7 +592,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   // File operations
   const createFile = async (filePath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
       // For PuyaPy and PyTeal, only update IndexedDB and local state
       await indexedDBManager.saveFile(selectedTemplate, filePath, "");
       setFileContents((prev) => ({ ...prev, [filePath]: "" }));
@@ -614,7 +614,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const renameFile = async (oldPath: string, newPath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
       const content = fileContents[oldPath] || '';
       await indexedDBManager.saveFile(selectedTemplate, newPath, content);
       setFileContents((prev) => {
@@ -646,7 +646,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const deleteFile = async (filePath: string) => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
       setFileContents((prev) => {
         const updated = { ...prev };
         delete updated[filePath];
@@ -662,7 +662,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleInstall = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
       handleTerminalOutput("Install not needed for Pyodide templates.");
       return;
     }
@@ -699,6 +699,75 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     setIsInstalling(false);
   };
 
+  const handlePuyaTsBuild = async () => {
+    setIsBuilding(true);
+    handleTerminalOutput("Compiling PuyaTs contract...");
+    
+    try {
+      // Find .algo.ts files
+      const algoFiles = Object.keys(fileContents).filter(path => path.endsWith('.algo.ts'));
+      
+      if (algoFiles.length === 0) {
+        handleTerminalOutput("No .algo.ts files found.");
+        return;
+      }
+      
+      for (const filePath of algoFiles) {
+        const filename = filePath.split('/').pop();
+        const code = fileContents[filePath];
+        
+        handleTerminalOutput(`Compiling ${filename}...`);
+        
+        const response = await fetch('/api/compile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename,
+            code
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok && result.files) {
+          // Create artifacts directory if it doesn't exist
+          const updatedFiles = { ...currentFiles };
+          if (!updatedFiles.artifacts) {
+            updatedFiles.artifacts = { directory: {} };
+          }
+          
+          const newFileContents = { ...fileContents };
+          
+          // Add compiled files to artifacts
+          for (const [fileName, fileData] of Object.entries(result.files)) {
+            const content = (fileData as any).data;
+            updatedFiles.artifacts.directory[fileName] = {
+              file: { contents: content }
+            };
+            
+            const artifactPath = `artifacts/${fileName}`;
+            newFileContents[artifactPath] = content;
+            
+            // Save to IndexedDB
+            await indexedDBManager.saveFile(selectedTemplate, artifactPath, content);
+          }
+          
+          setCurrentFiles(updatedFiles);
+          setFileContents(newFileContents);
+          handleTerminalOutput(`Successfully compiled ${filename}`);
+        } else {
+          handleTerminalOutput(`Failed to compile ${filename}: ${result.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      handleTerminalOutput(`Build failed: ${error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
   const handleBuild = async () => {
     if (selectedTemplate === 'PuyaPy') {
       await handlePuyaPyBuild();
@@ -706,6 +775,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
     if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
       await handlePyTealBuild();
+      return;
+    }
+    if (selectedTemplate === 'PuyaTs') {
+      await handlePuyaTsBuild();
       return;
     }
     
@@ -780,7 +853,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleTest = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
       handleTerminalOutput("Tests not implemented for Pyodide templates yet.");
       return;
     }
@@ -810,7 +883,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleDeploy = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
       handleTerminalOutput("Use the artifacts panel to deploy contracts for Pyodide templates.");
       return;
     }
@@ -841,7 +914,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleGenerateClient = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
       handleTerminalOutput("Client generation not available for Pyodide templates.");
       return;
     }
@@ -876,7 +949,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleDownloadSnapshot = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
       setIsBuilding(true);
       handleTerminalOutput("Creating snapshot...");
       try {
@@ -1019,7 +1092,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const artifactPath = `artifacts/${filename}`;
       let fileContent: string;
       
-      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
         fileContent = fileContents[artifactPath] || '';
         if (!fileContent) {
           throw new Error(`Artifact file ${filename} not found`);
@@ -1103,7 +1176,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const artifactPath = `artifacts/${filename}`;
       let fileContent: string;
       
-      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
         fileContent = fileContents[artifactPath] || '';
         if (!fileContent) {
           throw new Error(`Artifact file ${filename} not found`);
@@ -1179,7 +1252,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     const content = fileContents[activeFile];
     
     // For WebContainer templates, ensure file is synced
-    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
       try {
         await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate, indexedDBManager);
         handleTerminalOutput(`Saved: ${activeFile}`);
@@ -1221,7 +1294,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const artifactPath = `artifacts/${selectedContract.artifact}`;
       let fileContent: string;
       
-      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
         fileContent = fileContents[artifactPath] || '';
         if (!fileContent) {
           throw new Error(`Artifact file ${selectedContract.artifact} not found`);
@@ -1323,10 +1396,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         onTest={handleTest}
         onDeploy={handleDeploy}
         onGenerateClient={handleGenerateClient}
-        onInstall={handleInstall}
-        onDownloadSnapshot={handleDownloadSnapshot}
         isBuilding={isBuilding}
-        isInstalling={isInstalling}
         onStop={handleStop}
         isWebContainerReady={isWebContainerReady}
         onSave={handleSave}
@@ -1407,7 +1477,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                     setFileContents((prev) => ({ ...prev, [filePath]: content }))
                     
                     // For WebContainer templates, update both WebContainer and IndexedDB
-                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
                       try {
                         await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
                       } catch (error) {
@@ -1480,7 +1550,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   setFileContents((prev) => ({ ...prev, [filePath]: content }));
                   
                   // Update both WebContainer and IndexedDB
-                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal') {
+                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
                     try {
                       await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate, indexedDBManager);
                     } catch (error) {
