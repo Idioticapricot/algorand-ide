@@ -1,18 +1,23 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Play } from 'lucide-react';
+import { GitHubLogin } from "@/components/github-login";
 
 export default function HomePage() {
   const templates = [
-    { name: "PyTeal", description: "Python for Algorand Smart Contracts", link: "/pyteal" },
     { name: "TealScript", description: "TypeScript for Algorand Smart Contracts", link: "/tealscript" },
     { name: "PuyaPy", description: "Pythonic Smart Contracts for Algorand", link: "/puyapy" },
     { name: "PuyaTs", description: "TypeScript Smart Contracts for Algorand", link: "/puyats" },
+    { name: "PyTeal", description: "Python for Algorand Smart Contracts", link: "/pyteal", deprecated: true },
   ];
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: "var(--background-color)", color: "var(--text-color)" }}>
+      <div className="absolute top-4 right-4">
+        <GitHubLogin />
+      </div>
       <div className="max-w-md w-full space-y-8 text-center">
         <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
           Algorand IDE
@@ -26,13 +31,31 @@ export default function HomePage() {
         {templates.map((template) => (
           <Card key={template.name} className="flex flex-col justify-between" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
             <CardHeader>
-              <CardTitle>{template.name}</CardTitle>
-              <CardDescription>{template.description}</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                {template.name}
+                {template.deprecated && (
+                  <Badge variant="destructive" className="text-xs">
+                    Deprecated
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {template.description}
+                {template.deprecated && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Support stopped - Use PuyaPy instead
+                  </div>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Link href={template.link} passHref>
-                <Button className="w-full" style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)"}}>
-                  Start Building
+                <Button 
+                  className="w-full" 
+                  style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)" }}
+                  variant={template.deprecated ? "outline" : "default"}
+                >
+                  {template.deprecated ? "Legacy Access" : "Start Building"}
                 </Button>
               </Link>
             </CardContent>
