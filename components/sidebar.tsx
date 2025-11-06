@@ -6,7 +6,6 @@ import { useState } from "react"
 import {
   FolderOpen,
   Hammer,
-  TestTube,
   Code,
   BookOpen,
   Settings,
@@ -41,7 +40,6 @@ interface SidebarProps {
 const sidebarSections = [
   { id: "explorer", icon: FolderOpen, label: "Explorer" },
   { id: "build", icon: Hammer, label: "Build & Deploy" },
-  { id: "tests", icon: TestTube, label: "Tests" },
   { id: "programs", icon: Code, label: "Programs" },
   { id: "tutorials", icon: BookOpen, label: "Tutorials" },
   { id: "settings", icon: Settings, label: "Settings" },
@@ -242,21 +240,6 @@ export function Sidebar({
               ) : (
                 <div className="px-3 py-1 text-xs text-[#969696]">No artifacts found.</div>
               )}
-            </div>
-          )}
-
-          {activeSection === "tests" && (
-            <div className="p-3">
-              <div className="space-y-2">
-                <button className="w-full text-left px-3 py-2.5 bg-[#0e639c] hover:bg-[#1177bb] rounded text-sm flex items-center gap-2 transition-colors">
-                  <TestTube className="w-4 h-4" />
-                  Run All Tests
-                </button>
-                <button className="w-full text-left px-3 py-2.5 bg-[#2d2d30] hover:bg-[#37373d] rounded text-sm flex items-center gap-2 transition-colors">
-                  <FileText className="w-4 h-4" />
-                  Test Coverage
-                </button>
-              </div>
             </div>
           )}
 
