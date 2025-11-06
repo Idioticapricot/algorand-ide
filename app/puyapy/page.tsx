@@ -1,8 +1,14 @@
 "use client"
 
-import AlgorandIDE from "@/components/algorand-ide"
+import { ProjectCreator } from "@/components/project-creator"
 import { puyaPyfiles } from "@/components/puyaPyfiles"
 
 export default function PytealPage() {
-  return <AlgorandIDE initialFiles={puyaPyfiles} selectedTemplate="PuyaPy" selectedTemplateName="PuyaPy" />
+  return (
+    <ProjectCreator 
+      initialFiles={puyaPyfiles} 
+      selectedTemplate="PuyaPy" 
+      selectedTemplateName="PuyaPy"
+    />
+  )
 }

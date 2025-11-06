@@ -1,6 +1,12 @@
-import AlgorandIDE from "@/components/algorand-ide";
+import { ProjectCreator } from "@/components/project-creator";
 import { tealScriptFiles } from "@/components/tealScriptFiles";
 
 export default function TealScriptIDE() {
-  return <AlgorandIDE initialFiles={tealScriptFiles} selectedTemplate="TealScript" selectedTemplateName="TealScript"/>;
+  return (
+    <ProjectCreator 
+      initialFiles={tealScriptFiles} 
+      selectedTemplate="TealScript" 
+      selectedTemplateName="TealScript"
+    />
+  );
 }

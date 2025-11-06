@@ -23,6 +23,12 @@ import { indexedDBManager } from "@/lib/indexeddb"
 import { PyodideCompiler } from "@/lib/pyodide-compiler"
 import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
 import { replacePuyaUrls } from "@/tests/replace.js"
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 import { useToast } from "@/components/ui/use-toast"
 import algosdk from "algosdk"
@@ -145,7 +151,7 @@ async function fetchWebContainerFileTreeForSnapshot(fs: any, dir = ".") {
   return tree;
 }
 
-export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string }) {
+export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName, projectId }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string, projectId?: string }) {
   const [currentFiles, setCurrentFiles] = useState<any>(initialFiles);
 
   const getAllFilePaths = (tree: any, currentPath: string = '') => {
@@ -1134,6 +1140,39 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     }
   };
+  const saveProject = async () => {
+    if (!projectId) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      // Get current file structure (excluding node_modules)
+      let fileStructure = currentFiles;
+      if (webcontainer) {
+        fileStructure = await fetchWebContainerFileTree(webcontainer.fs, ".", selectedTemplate);
+      }
+      
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ file_structure: fileStructure })
+      });
+      
+      if (response.ok) {
+        handleTerminalOutput('Project saved successfully');
+      } else {
+        handleTerminalOutput('Failed to save project');
+      }
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      handleTerminalOutput('Failed to save project');
+    }
+  };
+
   const handleSave = async () => {
     if (!activeFile || !fileContents[activeFile]) return;
     
@@ -1148,6 +1187,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         if (window && (window as any).clearUnsavedFile) {
           (window as any).clearUnsavedFile(activeFile);
         }
+        // Auto-save project if projectId exists
+        if (projectId) {
+          await saveProject();
+        }
       } catch (error) {
         console.error('Failed to save file:', error);
         handleTerminalOutput(`Failed to save: ${activeFile}`);
@@ -1160,6 +1203,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         // Clear unsaved indicator
         if (window && (window as any).clearUnsavedFile) {
           (window as any).clearUnsavedFile(activeFile);
+        }
+        // Auto-save project if projectId exists
+        if (projectId) {
+          await saveProject();
         }
       } catch (error) {
         console.error('Failed to save file:', error);

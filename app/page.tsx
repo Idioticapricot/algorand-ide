@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Play } from 'lucide-react';
 import { GitHubLogin } from "@/components/github-login";
+import { ProjectsList } from "@/components/projects-list";
 
 export default function HomePage() {
   const templates = [
@@ -61,13 +62,29 @@ export default function HomePage() {
             </CardContent>
           </Card>
         ))}
+        <Card className="flex flex-col justify-between col-span-full sm:col-span-2 lg:col-span-1 self-end hover:scale-105 transition-transform duration-300 ease-in-out shadow-lg shadow-green-500/50" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5" />
+              My Projects
+            </CardTitle>
+            <CardDescription>View and manage your saved projects</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/projects" passHref>
+              <Button className="w-full" style={{ backgroundColor: "var(--button-color)", color: "var(--text-color)"}}>
+                View Projects
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
         <Card className="flex flex-col justify-between col-span-full sm:col-span-2 lg:col-span-1 self-end hover:scale-105 transition-transform duration-300 ease-in-out shadow-lg shadow-blue-500/50" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Play className="h-5 w-5" />
               Playground
             </CardTitle>
-            <CardDescription>Play with the smart contract examples, created by our community devs</CardDescription>
+            <CardDescription>Explore public projects from the community</CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/playground" passHref>

@@ -1,8 +1,14 @@
 "use client"
 
-import AlgorandIDE from "@/components/algorand-ide"
+import { ProjectCreator } from "@/components/project-creator"
 import { puyaTsfiles } from "@/components/puyaTsfiles"
 
 export default function PuyaTsPage() {
-  return <AlgorandIDE initialFiles={puyaTsfiles} selectedTemplate="PuyaTs" selectedTemplateName="PuyaTs" />
+  return (
+    <ProjectCreator 
+      initialFiles={puyaTsfiles} 
+      selectedTemplate="PuyaTs" 
+      selectedTemplateName="PuyaTs"
+    />
+  )
 }
