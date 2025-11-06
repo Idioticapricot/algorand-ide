@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { WebContainer } from "@webcontainer/api"
-import { indexedDBManager } from "@/lib/indexeddb"
+
 
 interface ArtifactFileViewerPanelProps {
   filePath: string;
@@ -47,20 +47,7 @@ export function ArtifactFileViewerPanel({
         return;
       }
 
-      // For PuyaPy/PyTeal templates, try IndexedDB
-      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal') {
-        try {
-          console.log('Trying IndexedDB for:', fullPath);
-          const content = await indexedDBManager.getFile(selectedTemplate, fullPath);
-          if (content) {
-            console.log('Found in IndexedDB');
-            setFileContent(content);
-            return;
-          }
-        } catch (error) {
-          console.error(`Error reading from IndexedDB:`, error);
-        }
-      }
+
 
       console.log('File not found in any source');
       setFileContent("File not found");

@@ -38,14 +38,13 @@ export async function ensureDirectoryExists(
 }
 
 /**
- * Update file content in WebContainer and sync with IndexedDB
+ * Update file content in WebContainer
  */
 export async function updateFileInWebContainer(
   webcontainer: WebContainer,
   filePath: string,
   content: string,
-  selectedTemplate: string,
-  indexedDBManager: any
+  selectedTemplate: string
 ): Promise<void> {
   // Ensure directory exists
   const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
@@ -55,7 +54,4 @@ export async function updateFileInWebContainer(
   
   // Write to WebContainer
   await writeFileToWebContainer(webcontainer, filePath, content);
-  
-  // Sync to IndexedDB
-  await indexedDBManager.saveFile(selectedTemplate, filePath, content);
 }
