@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": [],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "target": "ES6",
@@ -21,13 +22,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@algorandfoundation/algorand-typescript": [
-        "types/@algorandfoundation/algorand-typescript/index.d.ts"
-      ]
+      "@/*": ["./*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules",     "types/"
-]
+  "exclude": ["node_modules"]
 }

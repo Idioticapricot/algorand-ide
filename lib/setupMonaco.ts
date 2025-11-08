@@ -10,21 +10,63 @@ declare const require: {
 
 type Template = 'pyteal' | 'tealscript' | 'puyapy' | 'puyats';
 
-let puyaTsModules: { key: string; content: string }[] | null = null;
+const CDN_BASE = 'https://cdn.jsdelivr.net/npm/@algorandfoundation/algorand-typescript';
 
-function loadPuyaTsTypes() {
-  if (puyaTsModules === null) {
-    console.log('Loading PuyaTs modules from require.context...');
-    try {
-      const context = (require as any).context("../types/@algorandfoundation/algorand-typescript", true, /\.d\.ts$/);
-      puyaTsModules = context.keys().map((key: string) => ({ key, content: context(key) }));
-      console.log('PuyaTs modules loaded:', puyaTsModules.length, puyaTsModules.map(m => m.key));
-    } catch (error) {
-      console.warn('Failed to load PuyaTs types:', error);
-      puyaTsModules = [];
-    }
+const TYPE_FILES = [
+  'index.d.ts',
+  'arc-28.d.ts',
+  'arrays.d.ts', 
+  'base-contract.d.ts',
+  'box.d.ts',
+  'compiled.d.ts',
+  'gtxn.d.ts',
+  'itxn-compose.d.ts',
+  'itxn.d.ts',
+  'logic-sig.d.ts',
+  'on-complete-action.d.ts',
+  'op.d.ts',
+  'primitives.d.ts',
+  'reference-array.d.ts',
+  'reference.d.ts',
+  'state.d.ts',
+  'template-var.d.ts',
+  'transactions.d.ts',
+  'util.d.ts',
+  'arc4/index.d.ts',
+  'internal/index.d.ts'
+];
+
+async function loadAlgorandTypesFromCDN(monaco: any) {
+  console.log('Loading Algorand TypeScript types from CDN...');
+  
+  try {
+    const typePromises = TYPE_FILES.map(async (file) => {
+      const url = `${CDN_BASE}/${file}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.warn(`Failed to load ${file}: ${response.status}`);
+          return null;
+        }
+        const content = await response.text();
+        const uri = `file:///node_modules/@algorandfoundation/algorand-typescript/${file}`;
+        
+        monaco.languages.typescript.typescriptDefaults.addExtraLib(content, uri);
+        console.log(`Loaded type definitions: ${file}`);
+        return { file, content };
+      } catch (error) {
+        console.warn(`Error loading ${file}:`, error);
+        return null;
+      }
+    });
+    
+    const results = await Promise.all(typePromises);
+    const loaded = results.filter(r => r !== null);
+    console.log(`Successfully loaded ${loaded.length}/${TYPE_FILES.length} Algorand type files`);
+    
+  } catch (error) {
+    console.error('Failed to load Algorand types from CDN:', error);
   }
-  return puyaTsModules;
 }
 
 function setupPuyaPyIntelliSense(monaco: any) {
@@ -161,7 +203,7 @@ export function setupMonacoTypes(monaco: any, template?: Template) {
   
   // Load template-specific types and IntelliSense
   if (template === 'puyats') {
-    console.log('PuyaTs type loading disabled due to build compatibility issues');
+    loadAlgorandTypesFromCDN(monaco);
   } else if (template === 'puyapy') {
     setupPuyaPyIntelliSense(monaco);
   }
