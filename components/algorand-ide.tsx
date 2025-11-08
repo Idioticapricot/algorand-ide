@@ -27,6 +27,23 @@ import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
 import { replacePuyaUrls } from "@/tests/replace.js"
 import { createClient } from '@supabase/supabase-js'
 
+// Placeholder for PyodideCompiler - this should be implemented separately
+class PyodideCompiler {
+  async init(template: string) {
+    console.log(`PyodideCompiler init for ${template} - not implemented`);
+  }
+  
+  async compile(filename: string, content: string) {
+    console.log(`PyodideCompiler compile for ${filename} - not implemented`);
+    return { error: 'PyodideCompiler not implemented', files: [] };
+  }
+  
+  async readFile(path: string) {
+    console.log(`PyodideCompiler readFile for ${path} - not implemented`);
+    return { content: '' };
+  }
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -209,6 +226,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
   const [isBuilding, setIsBuilding] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
+  
+  // Pyodide compiler state
+  const [pyodideCompiler, setPyodideCompiler] = useState<PyodideCompiler | null>(null)
   
 
   
@@ -1478,6 +1498,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       }}
                       onSave={handleSave}
                       webcontainer={webcontainer}
+                      template={selectedTemplate.toLowerCase() as 'pyteal' | 'tealscript' | 'puyapy' | 'puyats'}
                     />
                   )}
                 </ResizablePanel>

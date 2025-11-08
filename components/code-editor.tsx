@@ -7,6 +7,8 @@ import type { WebContainer } from "@webcontainer/api"
 import dracula from 'monaco-themes/themes/Dracula.json';
 import { setupMonacoTypes } from "@/lib/setupMonaco";
 
+type Template = 'pyteal' | 'tealscript' | 'puyapy' | 'puyats';
+
 interface CodeEditorProps {
   activeFile: string
   openFiles: string[]
@@ -16,6 +18,7 @@ interface CodeEditorProps {
   onFileContentChange: (filePath: string, content: string) => Promise<void>
   onSave: () => Promise<void>
   webcontainer: WebContainer | null
+  template?: Template
 }
 
 const getFileIcon = (filename: string) => {
@@ -47,6 +50,7 @@ export function CodeEditor({
   onFileContentChange,
   onSave,
   webcontainer,
+  template,
 }: CodeEditorProps) {
   const [unsavedFiles, setUnsavedFiles] = useState<Set<string>>(new Set())
 
@@ -65,9 +69,9 @@ export function CodeEditor({
     editorRef.current = editor;
     monacoRef.current = monaco;
     
-    // Setup Monaco types for Algorand TypeScript (only once)
+    // Setup Monaco types (only once)
     if (!typesSetup) {
-      setupMonacoTypes(monaco);
+      setupMonacoTypes(monaco, template);
       setTypesSetup(true);
     }
     
@@ -81,7 +85,7 @@ export function CodeEditor({
   const beforeMount = (monaco: any) => {
     // Setup types before editor mounts
     if (!typesSetup) {
-      setupMonacoTypes(monaco);
+      setupMonacoTypes(monaco, template);
       setTypesSetup(true);
     }
   };
