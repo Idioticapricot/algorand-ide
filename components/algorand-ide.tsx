@@ -22,7 +22,7 @@ import { tealScriptFiles } from "@/components/tealScriptFiles"
 import { puyaPyfiles } from "@/components/puyaPyfiles"
 import { puyaTsfiles } from "@/components/puyaTsfiles"
 
-import { PyodideCompiler } from "@/lib/pyodide-compiler"
+
 import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
 import { replacePuyaUrls } from "@/tests/replace.js"
 import { createClient } from '@supabase/supabase-js'
@@ -210,8 +210,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [isBuilding, setIsBuilding] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
   
-  // Pyodide compiler for PuyaPy
-  const [pyodideCompiler, setPyodideCompiler] = useState<PyodideCompiler | null>(null)
+
   
   // Update PuyaPy file tree with artifacts
   const updatePuyaPyFileTree = async (files: string[]) => {
@@ -395,16 +394,6 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           setCurrentFiles(mergedFiles);
           setFileContents(getAllFileContents(mergedFiles));
           setIsWebContainerReady(true);
-          
-          console.log(`Initializing Pyodide compiler for ${selectedTemplate}...`);
-          const compiler = new PyodideCompiler();
-          try {
-            await compiler.init(selectedTemplate);
-            setPyodideCompiler(compiler);
-            console.log('Pyodide compiler initialized successfully');
-          } catch (error) {
-            console.error('Failed to initialize Pyodide compiler:', error);
-          }
           return;
         }
         
@@ -442,9 +431,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         (webcontainerRef.current as WebContainer).teardown();
         webcontainerRef.current = null;
       }
-      if (pyodideCompiler) {
-        pyodideCompiler.terminate();
-      }
+
     }
   }, [initialFiles, selectedTemplate]);
 
@@ -579,7 +566,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   // File operations
   const createFile = async (filePath: string) => {
     if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
-      // For Pyodide templates, only update local state
+      // For these templates, only update local state
       setFileContents((prev) => ({ ...prev, [filePath]: "" }));
       setOpenFiles((prev) => [...prev, filePath]);
       setActiveFile(filePath);
@@ -647,7 +634,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   const handleInstall = async () => {
     if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
-      handleTerminalOutput("Install not needed for Pyodide templates.");
+      handleTerminalOutput("Install not needed for these templates.");
       return;
     }
     
@@ -770,14 +757,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     // Open build panel when build starts
     setShowBuildPanel(true);
     
-    if (selectedTemplate === 'PuyaPy') {
-      await handlePuyaPyBuild();
-      return;
-    }
-    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
-      await handlePyTealBuild();
-      return;
-    }
+
     if (selectedTemplate === 'PuyaTs') {
       await handlePuyaTsBuild();
       return;
@@ -854,8 +834,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleTest = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
-      handleTerminalOutput("Tests not implemented for Pyodide templates yet.");
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Tests not implemented for PuyaTs template yet.");
       return;
     }
     
@@ -884,8 +864,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleDeploy = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
-      handleTerminalOutput("Use the artifacts panel to deploy contracts for Pyodide templates.");
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Use the artifacts panel to deploy contracts for PuyaTs template.");
       return;
     }
     
@@ -915,8 +895,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleGenerateClient = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
-      handleTerminalOutput("Client generation not available for Pyodide templates.");
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Client generation not available for PuyaTs template.");
       return;
     }
     
@@ -954,7 +934,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleDownloadSnapshot = async () => {
-    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
+    if (selectedTemplate === 'PuyaTs') {
       setIsBuilding(true);
       handleTerminalOutput("Creating snapshot...");
       try {

@@ -6,8 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
-    "dev:trace": "cross-env NODE_OPTIONS=--trace-deprecation next dev",
-    "postinstall": "if exist types\\@algorandfoundation\\algorand-typescript rmdir /s /q types\\@algorandfoundation\\algorand-typescript && if not exist types\\@algorandfoundation mkdir types\\@algorandfoundation && xcopy /e /i node_modules\\@algorandfoundation\\algorand-typescript types\\@algorandfoundation\\algorand-typescript"
+    "dev:trace": "cross-env NODE_OPTIONS=--trace-deprecation next dev"
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.1.1",
