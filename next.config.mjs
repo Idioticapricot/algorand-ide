@@ -20,11 +20,15 @@ const nextConfig = {
     },
   ],
   
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.d\.ts$/,
-      type: 'asset/source',
-    });
+  turbopack: {},
+  
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.module.rules.push({
+        test: /\.d\.ts$/,
+        type: 'asset/source',
+      });
+    }
     return config;
   },
 }
