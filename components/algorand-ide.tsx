@@ -24,7 +24,7 @@ import { puyaTsfiles } from "@/components/puyaTsfiles"
 
 
 import { updateFileInWebContainer } from "@/lib/webcontainer-functions"
-import { replacePuyaUrls } from "@/tests/replace.js"
+// import { replacePuyaUrls } from "@/tests/replace.js" // Removed for build compatibility
 import { createClient } from '@supabase/supabase-js'
 
 // Placeholder for PyodideCompiler - this should be implemented separately
@@ -675,17 +675,17 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     handleTerminalOutput(`Install process exited with code: ${exitCode}`);
     
     // Run URL replacement after install for PuyaTs template
-    if (selectedTemplate === 'PuyaTs' && exitCode === 0) {
-      setTimeout(async () => {
-        handleTerminalOutput("Replacing puya URLs...");
-        const success = await replacePuyaUrls(webcontainer);
-        if (success) {
-          handleTerminalOutput("Puya URLs replaced successfully");
-        } else {
-          handleTerminalOutput("Failed to replace puya URLs");
-        }
-      }, 3000);
-    }
+    // if (selectedTemplate === 'PuyaTs' && exitCode === 0) {
+    //   setTimeout(async () => {
+    //     handleTerminalOutput("Replacing puya URLs...");
+    //     const success = await replacePuyaUrls(webcontainer);
+    //     if (success) {
+    //       handleTerminalOutput("Puya URLs replaced successfully");
+    //     } else {
+    //       handleTerminalOutput("Failed to replace puya URLs");
+    //     }
+    //   }, 3000);
+    // }
     
     setIsInstalling(false);
   };

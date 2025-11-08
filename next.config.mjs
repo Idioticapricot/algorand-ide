@@ -22,19 +22,24 @@ const nextConfig = {
   
   turbopack: {},
   
-  webpack: (config, { isServer }) => {
-    // Ignore problematic TypeScript definition files during build
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '../types/@algorandfoundation/algorand-typescript': false,
-    };
+  webpack: (config, { isServer, dev }) => {
+    // Only ignore problematic imports during server-side build
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '../types/@algorandfoundation/algorand-typescript': false,
+        './types/@algorandfoundation/algorand-typescript': false,
+      };
+    }
     
+    // Handle .d.ts files properly
     if (!isServer) {
       config.module.rules.push({
         test: /\.d\.ts$/,
         type: 'asset/source',
       });
     }
+    
     return config;
   },
 }

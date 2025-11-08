@@ -14,13 +14,6 @@ let puyaTsModules: { key: string; content: string }[] | null = null;
 
 function loadPuyaTsTypes() {
   if (puyaTsModules === null) {
-    // Skip loading during build to prevent Vercel build errors
-    if (typeof window === 'undefined') {
-      console.log('Skipping PuyaTs type loading during build');
-      puyaTsModules = [];
-      return puyaTsModules;
-    }
-    
     console.log('Loading PuyaTs modules from require.context...');
     try {
       const context = (require as any).context("../types/@algorandfoundation/algorand-typescript", true, /\.d\.ts$/);
@@ -164,29 +157,11 @@ function setupPuyaPyIntelliSense(monaco: any) {
 }
 
 export function setupMonacoTypes(monaco: any, template?: Template) {
-  // Skip all Monaco setup during build to prevent import errors
-  if (typeof window === 'undefined') {
-    console.log('Skipping Monaco setup during build');
-    return;
-  }
-  
   console.log('Setting up Monaco types for template:', template);
   
   // Load template-specific types and IntelliSense
   if (template === 'puyats') {
-    const modules = loadPuyaTsTypes();
-    console.log('Setting up Monaco types...', modules.length, 'files loaded');
-    
-    modules.forEach(({ key, content }: { key: string; content: string }, i: number) => {
-      const filePath = `file:///__typings__/@algorandfoundation/algorand-typescript${key.substring(1)}`;
-      console.log(`Adding lib ${i}:`, key, '->', filePath);
-      monaco.languages.typescript.typescriptDefaults.addExtraLib(
-        content,
-        filePath
-      );
-    });
-    
-    console.log('Added', modules.length, 'extra libs for Algorand TypeScript');
+    console.log('PuyaTs type loading disabled due to build compatibility issues');
   } else if (template === 'puyapy') {
     setupPuyaPyIntelliSense(monaco);
   }
