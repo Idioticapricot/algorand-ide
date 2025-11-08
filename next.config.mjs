@@ -20,6 +20,13 @@ const nextConfig = {
     },
   ],
   
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.d\.ts$/,
+      type: 'asset/source',
+    });
+    return config;
+  },
 }
 
 export default nextConfig

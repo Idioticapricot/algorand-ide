@@ -5,10 +5,12 @@
     "target": "ES6",
     "skipLibCheck": true,
     "strict": true,
+    "typeRoots": ["./node_modules/@types"],
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "nodenext",
+    "baseUrl": ".",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -19,7 +21,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@algorandfoundation/algorand-typescript": [
+        "types/@algorandfoundation/algorand-typescript/index.d.ts"
+      ]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

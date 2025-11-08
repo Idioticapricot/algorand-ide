@@ -5,6 +5,7 @@ import Editor from "@monaco-editor/react"
 import { X, Circle } from "lucide-react"
 import type { WebContainer } from "@webcontainer/api"
 import dracula from 'monaco-themes/themes/Dracula.json';
+import { setupMonacoTypes } from "@/lib/setupMonaco";
 
 interface CodeEditorProps {
   activeFile: string
@@ -58,16 +59,31 @@ export function CodeEditor({
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
+  const [typesSetup, setTypesSetup] = useState(false);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    
+    // Setup Monaco types for Algorand TypeScript (only once)
+    if (!typesSetup) {
+      setupMonacoTypes(monaco);
+      setTypesSetup(true);
+    }
     
     // Define custom theme
     monaco.editor.defineTheme('dracula', {
       ...dracula
     });
     monaco.editor.setTheme('dracula');
+  };
+
+  const beforeMount = (monaco: any) => {
+    // Setup types before editor mounts
+    if (!typesSetup) {
+      setupMonacoTypes(monaco);
+      setTypesSetup(true);
+    }
   };
 
   // Update Ctrl+S command when activeFile changes
@@ -164,7 +180,9 @@ export function CodeEditor({
         language={getLanguage(activeFile)}
         value={fileContents[activeFile]}
         onChange={handleEditorChange}
+        beforeMount={beforeMount}
         onMount={handleEditorDidMount}
+        path={activeFile}
         options={{
           fontSize: 14,
           fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",

@@ -6,10 +6,12 @@
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
-    "dev:trace": "cross-env NODE_OPTIONS=--trace-deprecation next dev"
+    "dev:trace": "cross-env NODE_OPTIONS=--trace-deprecation next dev",
+    "postinstall": "if exist types\\@algorandfoundation\\algorand-typescript rmdir /s /q types\\@algorandfoundation\\algorand-typescript && if not exist types\\@algorandfoundation mkdir types\\@algorandfoundation && xcopy /e /i node_modules\\@algorandfoundation\\algorand-typescript types\\@algorandfoundation\\algorand-typescript"
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.1.1",
+    "@algorandfoundation/algorand-typescript": "^1.0.1",
     "@hookform/resolvers": "^3.9.1",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-accordion": "1.2.2",
