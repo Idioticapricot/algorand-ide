@@ -123,7 +123,52 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         localStorage.removeItem("algorand-wallet")
       }
     }
+
+    if (typeof window !== 'undefined' && selectedTemplate === 'PuyaTs') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const encodedContract = urlParams.get('contract');
+      if (encodedContract) {
+        loadContract(encodedContract);
+      }
+    }
   }, [initialFiles, selectedTemplate]);
+
+  const loadContract = async (encoded: string) => {
+    try {
+      handleTerminalOutput("Loading contract...");
+      
+      const response = await fetch('/api/load-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ encoded })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.code) {
+        const updatedFiles = { ...currentFiles };
+        const newFileContents = { ...fileContents };
+        
+        updatedFiles[result.filename] = {
+          file: { contents: result.code }
+        };
+        
+        newFileContents[result.filename] = result.code;
+        
+        setCurrentFiles(updatedFiles);
+        setFileContents(newFileContents);
+        openFile(result.filename);
+        handleTerminalOutput(`Contract loaded: ${result.filename}`);
+      } else {
+        handleTerminalOutput(`Failed to load contract: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('[LOAD-CONTRACT] Error:', error);
+      handleTerminalOutput(`Failed to load contract: ${error.message || error}`);
+    }
+  };
 
   const handleTerminalOutput = useCallback((data: string) => {
     setTerminalOutput((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${data}`]);
