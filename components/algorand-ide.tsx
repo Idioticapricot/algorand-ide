@@ -285,29 +285,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
   
   const handlePyTealBuild = async () => {
-    console.log('PyTeal build called, compiler state:', !!pyodideCompiler);
-    if (!pyodideCompiler) {
-      handleTerminalOutput("Pyodide compiler not ready. Initializing...");
-      try {
-        const compiler = new PyodideCompiler();
-        await compiler.init('Pyteal');
-        setPyodideCompiler(compiler);
-        handleTerminalOutput("Pyodide compiler initialized.");
-      } catch (error) {
-        handleTerminalOutput(`Failed to initialize Pyodide: ${error}`);
-        return;
-      }
-    }
-
     setIsBuilding(true);
     handleTerminalOutput("Compiling PyTeal contract...");
-    
-    const compiler = pyodideCompiler || await (async () => {
-      const newCompiler = new PyodideCompiler();
-      await newCompiler.init('Pyteal');
-      setPyodideCompiler(newCompiler);
-      return newCompiler;
-    })();
     
     try {
       const contractFile = fileContents['contract.py'];
@@ -316,19 +295,51 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         return;
       }
       
-      const result = await compiler.compile('contract.py', contractFile);
+      console.log(`[BUILD] PyTeal compilation started`);
       
-      if (result.error) {
-        handleTerminalOutput(`Compilation failed: ${result.error}`);
-      } else {
-        handleTerminalOutput(`Compilation completed in ${result.elapsed?.toFixed(3)}s`);
-        
-        if (result.files) {
-          await updatePyTealFileTree(result.files);
+      const response = await fetch('/api/compile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'pyteal',
+          code: btoa(contractFile)
+        })
+      });
+      
+      const result = await response.json();
+      console.log(`[BUILD] PyTeal compilation result:`, result);
+      
+      if (result.ok && result.files) {
+        const updatedFiles = { ...currentFiles };
+        if (!updatedFiles.artifacts) {
+          updatedFiles.artifacts = { directory: {} };
         }
+        
+        const newFileContents = { ...fileContents };
+        
+        for (const [fileName, fileData] of Object.entries(result.files)) {
+          const data = (fileData as any).data;
+          const encoding = (fileData as any).encoding;
+          const content = encoding === 'base64' ? atob(data) : data;
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          newFileContents[`artifacts/${fileName}`] = content;
+        }
+        
+        setCurrentFiles(updatedFiles);
+        setFileContents(newFileContents);
+        handleTerminalOutput("PyTeal compilation completed successfully");
+      } else {
+        handleTerminalOutput(`Compilation failed: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      handleTerminalOutput(`Build failed: ${error}`);
+    } catch (error: any) {
+      console.error('[BUILD] PyTeal build error:', error);
+      handleTerminalOutput(`Build failed: ${error.message || error}`);
     } finally {
       setIsBuilding(false);
     }
@@ -695,7 +706,6 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     handleTerminalOutput("Compiling PuyaTs contract...");
     
     try {
-      // Find .algo.ts files
       const algoFiles = Object.keys(fileContents).filter(path => path.endsWith('.algo.ts'));
       
       if (algoFiles.length === 0) {
@@ -708,9 +718,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         const code = fileContents[filePath];
         
         handleTerminalOutput(`Compiling ${filename}...`);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        console.log(`[BUILD] PuyaTs compilation started for ${filename}`);
         
         const response = await fetch('/api/compile', {
           method: 'POST',
@@ -718,18 +726,16 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            type: 'puyats',
             filename,
-            codeBase64: btoa(code)
-          }),
-          signal: controller.signal
+            code
+          })
         });
         
-        clearTimeout(timeoutId);
-        
         const result = await response.json();
+        console.log(`[BUILD] PuyaTs compilation result:`, result);
         
         if (result.ok && result.files) {
-          // Create artifacts directory if it doesn't exist
           const updatedFiles = { ...currentFiles };
           if (!updatedFiles.artifacts) {
             updatedFiles.artifacts = { directory: {} };
@@ -737,22 +743,16 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           
           const newFileContents = { ...fileContents };
           
-          // Add compiled files to artifacts
           for (const [fileName, fileData] of Object.entries(result.files)) {
             const data = (fileData as any).data;
             const encoding = (fileData as any).encoding;
-            
-            // Decode base64 if needed
             const content = encoding === 'base64' ? atob(data) : data;
             
             updatedFiles.artifacts.directory[fileName] = {
               file: { contents: content }
             };
             
-            const artifactPath = `artifacts/${fileName}`;
-            newFileContents[artifactPath] = content;
-            
-
+            newFileContents[`artifacts/${fileName}`] = content;
           }
           
           setCurrentFiles(updatedFiles);
@@ -763,23 +763,109 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         }
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        handleTerminalOutput(`Compilation timeout: Request took too long`);
-      } else {
-        handleTerminalOutput(`Build failed: ${error.message || error}`);
+      console.error('[BUILD] PuyaTs build error:', error);
+      handleTerminalOutput(`Build failed: ${error.message || error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  const handleTealScriptBuild = async () => {
+    setIsBuilding(true);
+    handleTerminalOutput("Compiling TealScript contract...");
+    
+    try {
+      const algoFiles = Object.keys(fileContents).filter(path => path.endsWith('.algo.ts'));
+      
+      if (algoFiles.length === 0) {
+        handleTerminalOutput("No .algo.ts files found.");
+        return;
       }
+      
+      for (const filePath of algoFiles) {
+        const filename = filePath.split('/').pop();
+        const code = fileContents[filePath];
+        
+        handleTerminalOutput(`Compiling ${filename}...`);
+        console.log(`[BUILD] TealScript compilation started for ${filename}`);
+        
+        const response = await fetch('/api/compile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'tealscript',
+            filename,
+            code
+          })
+        });
+        
+        const result = await response.json();
+        console.log(`[BUILD] TealScript compilation result:`, result);
+        
+        if (result.ok && result.result) {
+          const updatedFiles = { ...currentFiles };
+          if (!updatedFiles.artifacts) {
+            updatedFiles.artifacts = { directory: {} };
+          }
+          
+          const newFileContents = { ...fileContents };
+          
+          // Parse the plain text response and extract files
+          const sections = result.result.split('=== ');
+          for (const section of sections) {
+            if (section.trim()) {
+              const lines = section.split('\n');
+              const fileName = lines[0].replace(' ===', '').trim();
+              const content = lines.slice(1).join('\n').trim();
+              
+              if (fileName && content) {
+                updatedFiles.artifacts.directory[fileName] = {
+                  file: { contents: content }
+                };
+                
+                newFileContents[`artifacts/${fileName}`] = content;
+              }
+            }
+          }
+          
+          setCurrentFiles(updatedFiles);
+          setFileContents(newFileContents);
+          handleTerminalOutput(`Successfully compiled ${filename}`);
+        } else {
+          handleTerminalOutput(`Failed to compile ${filename}: ${result.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error: any) {
+      console.error('[BUILD] TealScript build error:', error);
+      handleTerminalOutput(`Build failed: ${error.message || error}`);
     } finally {
       setIsBuilding(false);
     }
   };
 
   const handleBuild = async () => {
-    // Open build panel when build starts
     setShowBuildPanel(true);
+    console.log(`[BUILD] Starting build for template: ${selectedTemplate}`);
     
-
     if (selectedTemplate === 'PuyaTs') {
       await handlePuyaTsBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'PuyaPy') {
+      await handlePuyaPyBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      await handlePyTealBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'TealScript') {
+      await handleTealScriptBuild();
       return;
     }
     
@@ -802,30 +888,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
   
   const handlePuyaPyBuild = async () => {
-    console.log('PuyaPy build called, compiler state:', !!pyodideCompiler);
-    if (!pyodideCompiler) {
-      handleTerminalOutput("Pyodide compiler not ready. Initializing...");
-      try {
-        const compiler = new PyodideCompiler();
-        await compiler.init('PuyaPy');
-        setPyodideCompiler(compiler);
-        handleTerminalOutput("Pyodide compiler initialized.");
-      } catch (error) {
-        handleTerminalOutput(`Failed to initialize Pyodide: ${error}`);
-        return;
-      }
-    }
-
     setIsBuilding(true);
     handleTerminalOutput("Compiling PuyaPy contract...");
-    
-    // Use the compiler (either existing or newly created)
-    const compiler = pyodideCompiler || await (async () => {
-      const newCompiler = new PyodideCompiler();
-      await newCompiler.init('PuyaPy');
-      setPyodideCompiler(newCompiler);
-      return newCompiler;
-    })();
     
     try {
       const contractFile = fileContents['contract.py'];
@@ -834,20 +898,51 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         return;
       }
       
-      const result = await compiler.compile('contract.py', contractFile);
+      console.log(`[BUILD] PuyaPy compilation started`);
       
-      if (result.error) {
-        handleTerminalOutput(`Compilation failed: ${result.error}`);
-      } else {
-        handleTerminalOutput(`Compilation completed in ${result.elapsed?.toFixed(3)}s`);
-        
-        // Update file tree with artifacts
-        if (result.files) {
-          await updatePuyaPyFileTree(result.files);
+      const response = await fetch('/api/compile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'puyapy',
+          code: btoa(contractFile)
+        })
+      });
+      
+      const result = await response.json();
+      console.log(`[BUILD] PuyaPy compilation result:`, result);
+      
+      if (result.ok && result.files) {
+        const updatedFiles = { ...currentFiles };
+        if (!updatedFiles.artifacts) {
+          updatedFiles.artifacts = { directory: {} };
         }
+        
+        const newFileContents = { ...fileContents };
+        
+        for (const [fileName, fileData] of Object.entries(result.files)) {
+          const data = (fileData as any).data;
+          const encoding = (fileData as any).encoding;
+          const content = encoding === 'base64' ? atob(data) : data;
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          newFileContents[`artifacts/${fileName}`] = content;
+        }
+        
+        setCurrentFiles(updatedFiles);
+        setFileContents(newFileContents);
+        handleTerminalOutput("PuyaPy compilation completed successfully");
+      } else {
+        handleTerminalOutput(`Compilation failed: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      handleTerminalOutput(`Build failed: ${error}`);
+    } catch (error: any) {
+      console.error('[BUILD] PuyaPy build error:', error);
+      handleTerminalOutput(`Build failed: ${error.message || error}`);
     } finally {
       setIsBuilding(false);
     }
