@@ -26,13 +26,16 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
   const router = useRouter()
   const searchParams = useSearchParams()
   const projectParam = searchParams.get('project')
+  const contractParam = searchParams.get('contract')
   
   const [showDialog, setShowDialog] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingContract, setLoadingContract] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [shareable, setShareable] = useState('private')
+  const [contractCode, setContractCode] = useState<string | null>(null)
 
   useEffect(() => {
     const getUser = async () => {
@@ -47,6 +50,33 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
     getUser()
   }, [projectParam])
 
+  useEffect(() => {
+    const loadContract = async () => {
+      if (!contractParam) return
+      
+      setLoadingContract(true)
+      try {
+        const response = await fetch('/api/load-contract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ encoded: contractParam })
+        })
+        
+        const result = await response.json()
+        if (result.success && result.code) {
+          setContractCode(result.code)
+        }
+      } catch (error) {
+        console.error('Failed to load contract:', error)
+      } finally {
+        setLoadingContract(false)
+      }
+    }
+    loadContract()
+  }, [contractParam])
+
   const createProject = async () => {
     if (!user || !projectName.trim()) return
     
@@ -54,6 +84,18 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
+
+      let fileStructure = initialFiles
+      
+      // If contract code is loaded, add it to file structure
+      if (contractCode) {
+        fileStructure = {
+          ...initialFiles,
+          'contract.algo.ts': {
+            file: { contents: contractCode }
+          }
+        }
+      }
 
       const response = await fetch('/api/projects/me', {
         method: 'POST',
@@ -65,7 +107,7 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
           name: projectName.trim(),
           description: projectDescription.trim(),
           template: selectedTemplate,
-          file_structure: initialFiles,
+          file_structure: fileStructure,
           shareable
         })
       })
