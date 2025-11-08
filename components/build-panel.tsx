@@ -13,7 +13,8 @@ import {
   CheckCircle, 
   Clock,
   Download,
-  Rocket
+  Rocket,
+  Trash2
 } from "lucide-react"
 
 interface BuildPanelProps {
@@ -23,6 +24,7 @@ interface BuildPanelProps {
   onTest: () => void
   onDeploy: () => void
   onStop: () => void
+  onClearLogs: () => void
   artifacts: any[]
   onDownloadSnapshot: () => void
 }
@@ -34,6 +36,7 @@ export function BuildPanel({
   onTest,
   onDeploy,
   onStop,
+  onClearLogs,
   artifacts,
   onDownloadSnapshot
 }: BuildPanelProps) {
@@ -75,6 +78,15 @@ export function BuildPanel({
               >
                 <Play className="w-3 h-3 mr-1" />
                 Build
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onClearLogs}
+                className="h-6 px-2 text-xs"
+                title="Clear Logs"
+              >
+                <Trash2 className="w-3 h-3" />
               </Button>
               <Button
                 size="sm"

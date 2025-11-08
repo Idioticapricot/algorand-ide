@@ -767,6 +767,9 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   };
 
   const handleBuild = async () => {
+    // Open build panel when build starts
+    setShowBuildPanel(true);
+    
     if (selectedTemplate === 'PuyaPy') {
       await handlePuyaPyBuild();
       return;
@@ -944,6 +947,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   const handleStop = () => {
     setIsBuilding(false)
+  }
+
+  const handleClearLogs = () => {
+    setTerminalOutput([])
   }
 
   const handleDownloadSnapshot = async () => {
@@ -1596,6 +1603,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       onTest={handleTest}
                       onDeploy={handleDeploy}
                       onStop={handleStop}
+                      onClearLogs={handleClearLogs}
                       artifacts={currentFiles.artifacts ? Object.keys(currentFiles.artifacts.directory).map(name => ({ name, size: 'Unknown' })) : []}
                       onDownloadSnapshot={handleDownloadSnapshot}
                     />
