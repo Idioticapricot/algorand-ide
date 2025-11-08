@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
         endpoint = '/compile-tealscript'
         requestBody = { filename: payload.filename, code: payload.code }
         break
+      case 'generate-client':
+        endpoint = '/generate-client'
+        requestBody = { arc32Json: payload.arc32Json }
+        break
       default:
         return NextResponse.json({ error: 'Invalid compilation type' }, { status: 400 })
     }

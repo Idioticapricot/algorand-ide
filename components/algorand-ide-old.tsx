@@ -16,8 +16,25 @@ import { ArtifactsPanel } from "@/components/artifacts-panel"
 import { ProgramsPanel } from "@/components/programs-panel"
 import { SettingsPanel } from "@/components/settings-panel"
 import { ArtifactFileViewerPanel } from "@/components/artifact-file-viewer-panel"
-
+// import { replacePuyaUrls } from "@/tests/replace.js" // Removed for build compatibility
 import { createClient } from '@supabase/supabase-js'
+
+// Placeholder for PyodideCompiler - this should be implemented separately
+class PyodideCompiler {
+  async init(template: string) {
+    console.log(`PyodideCompiler init for ${template} - not implemented`);
+  }
+  
+  async compile(filename: string, content: string) {
+    console.log(`PyodideCompiler compile for ${filename} - not implemented`);
+    return { error: 'PyodideCompiler not implemented', files: [] };
+  }
+  
+  async readFile(path: string) {
+    console.log(`PyodideCompiler readFile for ${path} - not implemented`);
+    return { content: '' };
+  }
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +57,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TransactionBuilder } from "@/components/transaction-builder"
 
+
+
 interface Wallet {
   address: string
   balance: number
@@ -49,9 +68,116 @@ interface Wallet {
   algoPrice: number
 }
 
+// Helper function to save project to database
+async function saveProjectToDatabase(projectId: string, fileStructure: any, selectedTemplate: string) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+    
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ 
+        file_structure: fileStructure,
+        template: selectedTemplate
+      })
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to save project to database:', error);
+    return false;
+  }
+}
+
+// Utility to recursively fetch file structure from WebContainer (excludes node_modules for UI)
+async function fetchWebContainerFileTree(fs: any, dir = ".", selectedTemplate: string) {
+  console.log(`fetchWebContainerFileTree called for dir: ${dir}, template: ${selectedTemplate}`);
+  const tree: any = {};
+  let entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Filter out node_modules and .py files if TealScript is selected
+  entries = entries.filter((entry: any) => {
+    if (entry.name === "node_modules") {
+      console.log(`Ignoring file change in node_modules: ${entry.name}`);
+      return false; // Always hide node_modules
+    }
+    if ((selectedTemplate === "TealScript" || selectedTemplate === "PuyaTs") && entry.isFile() && entry.name.endsWith(".py")) {
+      console.log(`Filtering out Python file for ${selectedTemplate}: ${entry.name}`);
+      return false; // Hide .py files for TealScript and PuyaTs templates
+    }
+    if ((selectedTemplate === "Pyteal" || selectedTemplate === "PuyaPy") && entry.isFile() && entry.name.endsWith(".ts")) {
+      console.log(`Filtering out TypeScript file for ${selectedTemplate}: ${entry.name}`);
+      return false; // Hide .ts files for Pyteal and PuyaPy templates
+    }
+    return true;
+  });
+
+  // Sort: directories first, then files, then by name
+  entries = entries.sort((a: any, b: any) => {
+    if (a.isDirectory() === b.isDirectory()) return a.name.localeCompare(b.name);
+    return a.isDirectory() ? -1 : 1;
+  });
+
+  for (const entry of entries) {
+    const entryName = entry.name;
+    const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
+
+    if (entry.isDirectory()) {
+      tree[entryName] = { directory: await fetchWebContainerFileTree(fs, fullPath,selectedTemplate) };
+    } else if (entry.isFile()) {
+      tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
+    }
+  }
+  return tree;
+}
+
+// Utility to fetch ALL files including node_modules for snapshot
+async function fetchWebContainerFileTreeForSnapshot(fs: any, dir = ".") {
+  console.log(`fetchWebContainerFileTreeForSnapshot called for dir: ${dir}`);
+  const tree: any = {};
+  let entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Sort: directories first, then files, then by name
+  entries = entries.sort((a: any, b: any) => {
+    if (a.isDirectory() === b.isDirectory()) return a.name.localeCompare(b.name);
+    return a.isDirectory() ? -1 : 1;
+  });
+
+  for (const entry of entries) {
+    const entryName = entry.name;
+    const fullPath = dir === "." ? entryName : `${dir}/${entryName}`;
+
+    if (entry.isDirectory()) {
+      tree[entryName] = { directory: await fetchWebContainerFileTreeForSnapshot(fs, fullPath) };
+    } else if (entry.isFile()) {
+      tree[entryName] = { file: { contents: await fs.readFile(fullPath, "utf-8") } };
+    }
+  }
+  return tree;
+}
+
 export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTemplateName, projectId }: { initialFiles: any, selectedTemplate: string, selectedTemplateName: string, projectId?: string }) {
   const [currentFiles, setCurrentFiles] = useState<any>(initialFiles);
 
+  const getAllFilePaths = (tree: any, currentPath: string = '') => {
+    let paths: string[] = [];
+    for (const key in tree) {
+      const newPath = currentPath ? `${currentPath}/${key}` : key;
+      if (tree[key].file) {
+        paths.push(newPath);
+      } else if (tree[key].directory) {
+        paths = paths.concat(getAllFilePaths(tree[key].directory, newPath));
+      }
+    }
+    return paths;
+  };
+
+  const [activeFile, setActiveFile] = useState("");
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const getAllFileContents = (tree: any, currentPath: string = '') => {
     let contents: Record<string, string> = {};
     for (const key in tree) {
@@ -65,8 +191,6 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     return contents;
   };
 
-  const [activeFile, setActiveFile] = useState("");
-  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [fileContents, setFileContents] = useState<Record<string, string>>(() => getAllFileContents(currentFiles));
   const [sidebarSection, setSidebarSection] = useState("explorer")
   const [showWallet, setShowWallet] = useState(false)
@@ -84,13 +208,179 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [executeArgs, setExecuteArgs] = useState<any[]>([]);
 
   // Layout state
+  const [sidebarWidth, setSidebarWidth] = useState(280)
+  const [terminalHeight, setTerminalHeight] = useState(300)
+  const [walletWidth, setWalletWidth] = useState(320)
   const [showAIChat, setShowAIChat] = useState(false)
   const [showBuildPanel, setShowBuildPanel] = useState(false)
+
   const [isBuilding, setIsBuilding] = useState(false)
+  
+
+  
+  // Update PuyaPy file tree with artifacts
+  const updatePuyaPyFileTree = async (files: string[]) => {
+    if (!pyodideCompiler) return;
+    
+    // Create artifacts directory in file tree if it doesn't exist
+    const updatedFiles = { ...currentFiles };
+    if (!updatedFiles.artifacts) {
+      updatedFiles.artifacts = { directory: {} };
+    }
+    
+    // Add artifact files to the tree
+    const artifactExtensions = ['.teal', '.arc32.json', '.puya.map'];
+    const artifactFiles = files.filter(file => 
+      artifactExtensions.some(ext => file.endsWith(ext))
+    );
+    
+    const newFileContents = { ...fileContents };
+    
+    for (const file of artifactFiles) {
+      const fileName = file.split('/').pop();
+      if (fileName) {
+        try {
+          // Get file content from Pyodide worker
+          const result = await pyodideCompiler.readFile(file);
+          const content = result.content || '';
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          // Update file contents cache
+          const artifactPath = `artifacts/${fileName}`;
+          newFileContents[artifactPath] = content;
+          
+
+          
+        } catch (error) {
+          console.error(`Failed to read ${file}:`, error);
+        }
+      }
+    }
+    
+    setCurrentFiles({...updatedFiles});
+    setFileContents({...newFileContents});
+    handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
+    
+    // Delayed file tree refresh
+    setTimeout(() => {
+      setCurrentFiles({...updatedFiles});
+    }, 2000);
+  }
+  
+  const handlePyTealBuild = async () => {
+    setIsBuilding(true);
+    handleTerminalOutput("Compiling PyTeal contract...");
+    
+    try {
+      const contractFile = fileContents['contract.py'];
+      if (!contractFile) {
+        handleTerminalOutput("No contract.py file found.");
+        return;
+      }
+      
+      console.log(`[BUILD] PyTeal compilation started`);
+      
+      const response = await fetch('/api/compile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'pyteal',
+          code: btoa(contractFile)
+        })
+      });
+      
+      const result = await response.json();
+      console.log(`[BUILD] PyTeal compilation result:`, result);
+      
+      if (result.ok && result.files) {
+        const updatedFiles = { ...currentFiles };
+        if (!updatedFiles.artifacts) {
+          updatedFiles.artifacts = { directory: {} };
+        }
+        
+        const newFileContents = { ...fileContents };
+        
+        for (const [fileName, fileData] of Object.entries(result.files)) {
+          const data = (fileData as any).data;
+          const encoding = (fileData as any).encoding;
+          const content = encoding === 'base64' ? atob(data) : data;
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          newFileContents[`artifacts/${fileName}`] = content;
+        }
+        
+        setCurrentFiles(updatedFiles);
+        setFileContents(newFileContents);
+        handleTerminalOutput("PyTeal compilation completed successfully");
+      } else {
+        handleTerminalOutput(`Compilation failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('[BUILD] PyTeal build error:', error);
+      handleTerminalOutput(`Build failed: ${error.message || error}`);
+    } finally {
+      setIsBuilding(false);
+    }
+  }
+  
+  const updatePyTealFileTree = async (files: string[]) => {
+    if (!pyodideCompiler) return;
+    
+    const updatedFiles = { ...currentFiles };
+    if (!updatedFiles.artifacts) {
+      updatedFiles.artifacts = { directory: {} };
+    }
+    
+    const artifactExtensions = ['.teal', '.json'];
+    const artifactFiles = files.filter(file => 
+      artifactExtensions.some(ext => file.endsWith(ext))
+    );
+    
+    const newFileContents = { ...fileContents };
+    
+    for (const file of artifactFiles) {
+      const fileName = file.split('/').pop();
+      if (fileName) {
+        try {
+          const result = await pyodideCompiler.readFile(file);
+          const content = result.content || '';
+          
+          updatedFiles.artifacts.directory[fileName] = {
+            file: { contents: content }
+          };
+          
+          newFileContents[`artifacts/${fileName}`] = content;
+          
+        } catch (error) {
+          console.error(`Failed to read ${file}:`, error);
+        }
+      }
+    }
+    
+    setCurrentFiles(updatedFiles);
+    setFileContents(newFileContents);
+    handleTerminalOutput(`Added ${artifactFiles.length} artifact files to file tree`);
+  }
+
   const [isReady, setIsReady] = useState(true)
+
+  // Resize state
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false)
+  const [isResizingTerminal, setIsResizingTerminal] = useState(false)
+  const [isResizingWallet, setIsResizingWallet] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
+
+
   const { toast } = useToast();
   const [deployedContracts, setDeployedContracts] = useState<any[]>(() => {
     if (typeof window !== "undefined") {
@@ -104,9 +394,38 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   });
 
   useEffect(() => {
-    setCurrentFiles(initialFiles);
-    setFileContents(getAllFileContents(initialFiles));
-    setIsReady(true);
+    if (webcontainerRef.current) {
+      return;
+    }
+
+    webcontainerRef.current = 'pending';
+
+    const initWebContainer = async () => {
+      try {
+        // Use initial files directly (no IndexedDB)
+        const mergedFiles = initialFiles;
+        
+        // Skip WebContainer for PuyaPy, PyTeal, and PuyaTs templates to save resources
+        if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
+          console.log(`Skipping WebContainer for ${selectedTemplate} template`);
+          setCurrentFiles(mergedFiles);
+          setFileContents(getAllFileContents(mergedFiles));
+          setIsWebContainerReady(true);
+          return;
+        }
+        
+        const webcontainerInstance = await WebContainer.boot();
+        await webcontainerInstance.mount(mergedFiles);
+        setWebcontainer(webcontainerInstance);
+        setIsWebContainerReady(true);
+        webcontainerRef.current = webcontainerInstance;
+      } catch (error) {
+        console.error("Failed to initialize WebContainer:", error);
+        webcontainerRef.current = null;
+      }
+    };
+
+    initWebContainer();
 
     const savedWallet = localStorage.getItem("algorand-wallet")
     if (savedWallet) {
@@ -116,12 +435,20 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           setWallet(parsedWallet)
         } else {
           console.error("Invalid wallet data in localStorage:", parsedWallet)
-          localStorage.removeItem("algorand-wallet")
+          localStorage.removeItem("algorand-wallet") // Clear invalid data
         }
       } catch (error) {
         console.error("Error parsing wallet from localStorage:", error)
-        localStorage.removeItem("algorand-wallet")
+        localStorage.removeItem("algorand-wallet") // Clear corrupted data
       }
+    }
+
+    return () => {
+      if (webcontainerRef.current && webcontainerRef.current !== 'pending') {
+        (webcontainerRef.current as WebContainer).teardown();
+        webcontainerRef.current = null;
+      }
+
     }
   }, [initialFiles, selectedTemplate]);
 
@@ -146,10 +473,43 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       setWallet(newWallet)
       localStorage.setItem("algorand-wallet", JSON.stringify(newWallet))
       
+      // Show funding instructions
       console.log("Wallet created! To fund with test ALGO, visit:")
       console.log(`https://testnet.algoexplorer.io/dispenser?addr=${newWallet.address}`)
     } catch (error) {
       console.error("Error creating wallet:", error)
+    }
+  }
+
+  const fundWallet = async () => {
+    if (!wallet?.address) return
+    
+    try {
+      // Use Algorand TestNet faucet
+      const response = await fetch("https://testnet-api.algonode.cloud/v2/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          to: wallet.address,
+          amount: 100000000, // 100 ALGO in microAlgos
+          fee: 1000,
+          firstRound: 1,
+          lastRound: 1000,
+          genesisID: "testnet-v1.0",
+          genesisHash: "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+        }),
+      })
+      
+      if (response.ok) {
+        console.log("Funding request submitted successfully")
+      } else {
+        console.error("Failed to fund wallet")
+      }
+    } catch (error) {
+      console.error("Error funding wallet:", error)
     }
   }
 
@@ -171,33 +531,160 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
   }
 
+  // Fetch and update file structure from WebContainer, wrapped in useCallback
+  const updateFileStructureFromWebContainer = useCallback(async () => {
+    if (!webcontainer) return;
+    const tree = await fetchWebContainerFileTree(webcontainer.fs, ".", selectedTemplate);
+    setCurrentFiles(tree);
+
+    // This logic can be simplified or memoized if performance becomes an issue
+    const getAllFileContents = (tree: any, currentPath: string = '') => {
+      let contents: Record<string, string> = {};
+      for (const key in tree) {
+        const newPath = currentPath ? `${currentPath}/${key}` : key;
+        if (tree[key].file) {
+          contents[newPath] = tree[key].file.contents;
+        } else if (tree[key].directory) {
+          contents = { ...contents, ...getAllFileContents(tree[key].directory, newPath) };
+        }
+      }
+      return contents;
+    };
+    setFileContents(getAllFileContents(tree));
+  }, [webcontainer]);
+
+  // Set up file system watcher for real-time updates
+  useEffect(() => {
+    if (!webcontainer || selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') return;
+
+    console.log("Setting up file system watcher for template:");
+
+    // Initial fetch
+    updateFileStructureFromWebContainer();
+
+    const watcher = webcontainer.fs.watch(".", { recursive: true }, async (event, filename) => {
+      // Ignore changes within node_modules
+      if (filename && typeof filename === 'string' && filename.startsWith("node_modules/")) {
+        console.log(`Ignoring file change in node_modules: ${event} on ${filename}`);
+        return;
+      }
+      console.log(`File change detected: ${event} on ${filename}`);
+      
+
+      
+      updateFileStructureFromWebContainer();
+    });
+
+    return () => {
+      watcher.close();
+    };
+  }, [webcontainer, updateFileStructureFromWebContainer, selectedTemplate]);
+
+  // File operations
   const createFile = async (filePath: string) => {
-    setFileContents((prev) => ({ ...prev, [filePath]: "" }));
-    setOpenFiles((prev) => [...prev, filePath]);
-    setActiveFile(filePath);
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
+      // For these templates, only update local state
+      setFileContents((prev) => ({ ...prev, [filePath]: "" }));
+      setOpenFiles((prev) => [...prev, filePath]);
+      setActiveFile(filePath);
+      return;
+    }
+    
+    if (!webcontainer) return;
+    
+    try {
+      await updateFileInWebContainer(webcontainer, filePath, "", selectedTemplate);
+      // No need to call updateFileStructureFromWebContainer manually, watcher will pick it up
+      setOpenFiles((prev) => [...prev, filePath]);
+      setActiveFile(filePath);
+    } catch (error) {
+      console.error('Failed to create file:', error);
+    }
   };
 
   const renameFile = async (oldPath: string, newPath: string) => {
-    const content = fileContents[oldPath] || '';
-    setFileContents((prev) => {
-      const updated = { ...prev };
-      updated[newPath] = content;
-      delete updated[oldPath];
-      return updated;
-    });
-    setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
-    if (activeFile === oldPath) {
-      setActiveFile(newPath);
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
+      const content = fileContents[oldPath] || '';
+      setFileContents((prev) => {
+        const updated = { ...prev };
+        updated[newPath] = content;
+        delete updated[oldPath];
+        return updated;
+      });
+      setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
+      if (activeFile === oldPath) {
+        setActiveFile(newPath);
+      }
+      return;
+    }
+    
+    if (!webcontainer) return;
+    
+    try {
+      const content = await webcontainer.fs.readFile(oldPath, "utf-8");
+      await webcontainer.fs.rm(oldPath);
+      await updateFileInWebContainer(webcontainer, newPath, content, selectedTemplate);
+      setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
+      if (activeFile === oldPath) {
+        setActiveFile(newPath);
+      }
+    } catch (error) {
+      console.error('Failed to rename file:', error);
     }
   };
 
   const deleteFile = async (filePath: string) => {
-    setFileContents((prev) => {
-      const updated = { ...prev };
-      delete updated[filePath];
-      return updated;
-    });
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
+      setFileContents((prev) => {
+        const updated = { ...prev };
+        delete updated[filePath];
+        return updated;
+      });
+      closeFile(filePath);
+      return;
+    }
+    
+    if (!webcontainer) return;
+    await webcontainer.fs.rm(filePath);
     closeFile(filePath);
+  };
+
+  const handleInstall = async () => {
+    if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal' || selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Install not needed for these templates.");
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    setIsInstalling(true);
+    handleTerminalOutput("Installing dependencies...");
+    const installProcess = await webcontainer.spawn("npm", ["install"]);
+    installProcess.output.pipeTo(new WritableStream({
+      write(data) {
+        handleTerminalOutput(data);
+      },
+    }));
+    const exitCode = await installProcess.exit;
+    handleTerminalOutput(`Install process exited with code: ${exitCode}`);
+    
+    // Run URL replacement after install for PuyaTs template
+    // if (selectedTemplate === 'PuyaTs' && exitCode === 0) {
+    //   setTimeout(async () => {
+    //     handleTerminalOutput("Replacing puya URLs...");
+    //     const success = await replacePuyaUrls(webcontainer);
+    //     if (success) {
+    //       handleTerminalOutput("Puya URLs replaced successfully");
+    //     } else {
+    //       handleTerminalOutput("Failed to replace puya URLs");
+    //     }
+    //   }, 3000);
+    // }
+    
+    setIsInstalling(false);
   };
 
   const handlePuyaTsBuild = async () => {
@@ -311,6 +798,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           
           const newFileContents = { ...fileContents };
           
+          // Parse the plain text response and extract files
           const sections = result.result.split('=== ');
           for (const section of sections) {
             if (section.trim()) {
@@ -343,6 +831,48 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
   };
 
+  const handleBuild = async () => {
+    setShowBuildPanel(true);
+    console.log(`[BUILD] Starting build for template: ${selectedTemplate}`);
+    
+    if (selectedTemplate === 'PuyaTs') {
+      await handlePuyaTsBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'PuyaPy') {
+      await handlePuyaPyBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
+      await handlePyTealBuild();
+      return;
+    }
+    
+    if (selectedTemplate === 'TealScript') {
+      await handleTealScriptBuild();
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    setIsBuilding(true);
+    handleTerminalOutput("Building project...");
+    const buildProcess = await webcontainer.spawn("npm", ["run", "build"]);
+    buildProcess.output.pipeTo(new WritableStream({
+      write(data) {
+        handleTerminalOutput(data);
+      },
+    }));
+    const exitCode = await buildProcess.exit;
+    handleTerminalOutput(`Build process exited with code: ${exitCode}`);
+    setIsBuilding(false);
+  };
+  
   const handlePuyaPyBuild = async () => {
     setIsBuilding(true);
     handleTerminalOutput("Compiling PuyaPy contract...");
@@ -404,164 +934,93 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
   }
 
-  const handlePyTealBuild = async () => {
-    setIsBuilding(true);
-    handleTerminalOutput("Compiling PyTeal contract...");
+  const handleTest = async () => {
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Tests not implemented for PuyaTs template yet.");
+      return;
+    }
     
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    setIsBuilding(true);
+    handleTerminalOutput("Running tests...");
     try {
-      const contractFile = fileContents['contract.py'];
-      if (!contractFile) {
-        handleTerminalOutput("No contract.py file found.");
-        return;
-      }
-      
-      console.log(`[BUILD] PyTeal compilation started`);
-      
-      const response = await fetch('/api/compile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const testProcess = await webcontainer.spawn("npm", ["run", "test"]);
+      testProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          handleTerminalOutput(data);
         },
-        body: JSON.stringify({
-          type: 'pyteal',
-          code: btoa(contractFile)
-        })
-      });
-      
-      const result = await response.json();
-      console.log(`[BUILD] PyTeal compilation result:`, result);
-      
-      if (result.ok && result.files) {
-        const updatedFiles = { ...currentFiles };
-        if (!updatedFiles.artifacts) {
-          updatedFiles.artifacts = { directory: {} };
-        }
-        
-        const newFileContents = { ...fileContents };
-        
-        for (const [fileName, fileData] of Object.entries(result.files)) {
-          const data = (fileData as any).data;
-          const encoding = (fileData as any).encoding;
-          const content = encoding === 'base64' ? atob(data) : data;
-          
-          updatedFiles.artifacts.directory[fileName] = {
-            file: { contents: content }
-          };
-          
-          newFileContents[`artifacts/${fileName}`] = content;
-        }
-        
-        setCurrentFiles(updatedFiles);
-        setFileContents(newFileContents);
-        handleTerminalOutput("PyTeal compilation completed successfully");
-      } else {
-        handleTerminalOutput(`Compilation failed: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error: any) {
-      console.error('[BUILD] PyTeal build error:', error);
-      handleTerminalOutput(`Build failed: ${error.message || error}`);
+      }));
+      const exitCode = await testProcess.exit;
+      handleTerminalOutput(`Test process exited with code: ${exitCode}`);
+    } catch (error) {
+      console.error("Test failed:", error);
+      handleTerminalOutput(`Test failed: ${error}`);
     } finally {
       setIsBuilding(false);
     }
-  }
-
-  const handleBuild = async () => {
-    setShowBuildPanel(true);
-    console.log(`[BUILD] Starting build for template: ${selectedTemplate}`);
-    
-    if (selectedTemplate === 'PuyaTs') {
-      await handlePuyaTsBuild();
-      return;
-    }
-    
-    if (selectedTemplate === 'PuyaPy') {
-      await handlePuyaPyBuild();
-      return;
-    }
-    
-    if (selectedTemplate === 'Pyteal' || selectedTemplate === 'PyTeal') {
-      await handlePyTealBuild();
-      return;
-    }
-    
-    if (selectedTemplate === 'TealScript') {
-      await handleTealScriptBuild();
-      return;
-    }
-    
-    handleTerminalOutput("No build process needed for this template.");
-  };
-
-  const handleTest = async () => {
-    handleTerminalOutput("Tests not implemented yet.");
   };
 
   const handleDeploy = async () => {
-    handleTerminalOutput("Use the artifacts panel to deploy contracts.");
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Use the artifacts panel to deploy contracts for PuyaTs template.");
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    setIsBuilding(true);
+    handleTerminalOutput("Deploying contract...");
+    try {
+      const deployProcess = await webcontainer.spawn("npm", ["run", "deploy"]);
+      deployProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          console.log("Deploy output:", data);
+          handleTerminalOutput(data);
+        },
+      }));
+      const exitCode = await deployProcess.exit;
+      handleTerminalOutput(`Deploy process exited with code: ${exitCode}`);
+    } catch (error) {
+      console.error("Deploy failed:", error);
+      handleTerminalOutput(`Deploy failed: ${error}`);
+    } finally {
+      setIsBuilding(false);
+    }
   };
 
   const handleGenerateClient = async () => {
+    if (selectedTemplate === 'PuyaTs') {
+      handleTerminalOutput("Client generation not available for PuyaTs template.");
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
     setIsBuilding(true);
     handleTerminalOutput("Generating client...");
-    
     try {
-      const arc32Files = Object.keys(fileContents).filter(path => path.endsWith('.arc32.json'));
-      
-      if (arc32Files.length === 0) {
-        handleTerminalOutput("No .arc32.json files found.");
-        return;
-      }
-      
-      for (const filePath of arc32Files) {
-        const arc32Content = fileContents[filePath];
-        const arc32Json = JSON.parse(arc32Content);
-        
-        console.log(`[BUILD] Generating client for ${filePath}`);
-        
-        const response = await fetch('/api/compile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'generate-client',
-            arc32Json
-          })
-        });
-        
-        const result = await response.json();
-        console.log(`[BUILD] Client generation result:`, result);
-        
-        if (result.ok && result.files) {
-          const updatedFiles = { ...currentFiles };
-          if (!updatedFiles.clients) {
-            updatedFiles.clients = { directory: {} };
-          }
-          
-          const newFileContents = { ...fileContents };
-          
-          for (const [fileName, fileData] of Object.entries(result.files)) {
-            const data = (fileData as any).data;
-            const encoding = (fileData as any).encoding;
-            const content = encoding === 'base64' ? atob(data) : data;
-            
-            updatedFiles.clients.directory[fileName] = {
-              file: { contents: content }
-            };
-            
-            newFileContents[`clients/${fileName}`] = content;
-          }
-          
-          setCurrentFiles(updatedFiles);
-          setFileContents(newFileContents);
-          handleTerminalOutput(`Successfully generated client for ${filePath}`);
-        } else {
-          handleTerminalOutput(`Failed to generate client for ${filePath}: ${result.error || 'Unknown error'}`);
-        }
-      }
-    } catch (error: any) {
-      console.error('[BUILD] Client generation error:', error);
-      handleTerminalOutput(`Client generation failed: ${error.message || error}`);
+      const generateClientProcess = await webcontainer.spawn("npm", ["run", "generate-client"]);
+      generateClientProcess.output.pipeTo(new WritableStream({
+        write(data) {
+          console.log("Generate Client output:", data);
+          handleTerminalOutput(data);
+        },
+      }));
+      const exitCode = await generateClientProcess.exit;
+      handleTerminalOutput(`Generate client process exited with code: ${exitCode}`);
+    } catch (error) {
+      console.error("Generate client failed:", error);
+      handleTerminalOutput(`Generate client failed: ${error}`);
     } finally {
       setIsBuilding(false);
     }
@@ -576,20 +1035,56 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   }
 
   const handleDownloadSnapshot = async () => {
+    if (selectedTemplate === 'PuyaTs') {
+      setIsBuilding(true);
+      handleTerminalOutput("Creating snapshot...");
+      try {
+        const jsonData = JSON.stringify(currentFiles, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedTemplate}-snapshot.json`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        handleTerminalOutput("Snapshot downloaded successfully.");
+      } catch (error) {
+        console.error("Snapshot failed:", error);
+        handleTerminalOutput(`Snapshot failed: ${error}`);
+      } finally {
+        setIsBuilding(false);
+      }
+      return;
+    }
+    
+    if (!webcontainer) {
+      handleTerminalOutput("WebContainer not ready.");
+      return;
+    }
+
+    console.log('handleDownloadSnapshot called for template:', selectedTemplate);
     setIsBuilding(true);
-    handleTerminalOutput("Creating snapshot...");
+    handleTerminalOutput("Creating snapshot with node_modules...");
     try {
-      const jsonData = JSON.stringify(currentFiles, null, 2);
+      console.log('Reading ALL files from WebContainer including node_modules...');
+      const allFiles = await fetchWebContainerFileTreeForSnapshot(webcontainer.fs, ".");
+      console.log('Files read successfully');
+      
+      const jsonData = JSON.stringify(allFiles, null, 2);
       const blob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
       const a = document.createElement('a');
       a.href = url;
       a.download = `${selectedTemplate}-snapshot.json`;
+      console.log('Triggering download for:', a.download);
       a.click();
       
       URL.revokeObjectURL(url);
       handleTerminalOutput("Snapshot downloaded successfully.");
+      console.log('Download triggered successfully');
     } catch (error) {
       console.error("Snapshot failed:", error);
       handleTerminalOutput(`Snapshot failed: ${error}`);
@@ -598,14 +1093,99 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
   }
 
+  
+
+  // Resize handlers
+  const handleSidebarMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingSidebar(true)
+  }
+
+  const handleTerminalMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingTerminal(true)
+  }
+
+  const handleWalletMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingWallet(true)
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+
+      if (isResizingSidebar) {
+        const newWidth = Math.max(200, Math.min(600, e.clientX - containerRect.left))
+        setSidebarWidth(newWidth)
+      }
+
+      if (isResizingTerminal) {
+        const newHeight = Math.max(200, Math.min(600, containerRect.bottom - e.clientY))
+        setTerminalHeight(newHeight)
+      }
+
+      if (isResizingWallet) {
+        const newWidth = Math.max(250, Math.min(500, containerRect.right - e.clientX))
+        setWalletWidth(newWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false)
+      setIsResizingTerminal(false)
+      setIsResizingWallet(false)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    if (isResizingSidebar || isResizingTerminal || isResizingWallet) {
+      document.addEventListener("mousemove", handleMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+      document.body.style.userSelect = "none"
+
+      if (isResizingSidebar || isResizingWallet) {
+        document.body.style.cursor = "col-resize"
+      } else if (isResizingTerminal) {
+        document.body.style.cursor = "row-resize"
+      }
+
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove)
+        document.removeEventListener("mouseup", handleMouseUp)
+      }
+    }
+  }, [isResizingSidebar, isResizingTerminal, isResizingWallet])
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const executeDeploy = async (filename: string, args: (string | number)[]) => {
     setIsDeploying(true);
     console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
       const artifactPath = `artifacts/${filename}`;
-      const fileContent = fileContents[artifactPath] || '';
-      if (!fileContent) {
-        throw new Error(`Artifact file ${filename} not found`);
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${filename} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
       }
       
       const appSpec = JSON.parse(fileContent);
@@ -680,9 +1260,16 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     console.log("deployArtifact called with filename:", filename);
     try {
       const artifactPath = `artifacts/${filename}`;
-      const fileContent = fileContents[artifactPath] || '';
-      if (!fileContent) {
-        throw new Error(`Artifact file ${filename} not found`);
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${filename} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
       }
       
       const appSpec = JSON.parse(fileContent);
@@ -712,7 +1299,6 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
     }
   };
-
   const saveProject = async () => {
     if (!projectId) return;
     
@@ -720,13 +1306,19 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
+      // Get current file structure (excluding node_modules)
+      let fileStructure = currentFiles;
+      if (webcontainer) {
+        fileStructure = await fetchWebContainerFileTree(webcontainer.fs, ".", selectedTemplate);
+      }
+      
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ file_structure: currentFiles })
+        body: JSON.stringify({ file_structure: fileStructure })
       });
       
       if (response.ok) {
@@ -743,17 +1335,41 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const handleSave = async () => {
     if (!activeFile || !fileContents[activeFile]) return;
     
-    try {
-      handleTerminalOutput(`Saved: ${activeFile}`);
-      if (window && (window as any).clearUnsavedFile) {
-        (window as any).clearUnsavedFile(activeFile);
+    const content = fileContents[activeFile];
+    
+    // For WebContainer templates, ensure file is synced
+    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
+      try {
+        await updateFileInWebContainer(webcontainer, activeFile, content, selectedTemplate);
+        handleTerminalOutput(`Saved: ${activeFile}`);
+        // Clear unsaved indicator
+        if (window && (window as any).clearUnsavedFile) {
+          (window as any).clearUnsavedFile(activeFile);
+        }
+        // Auto-save project if projectId exists
+        if (projectId) {
+          await saveProject();
+        }
+      } catch (error) {
+        console.error('Failed to save file:', error);
+        handleTerminalOutput(`Failed to save: ${activeFile}`);
       }
-      if (projectId) {
-        await saveProject();
+    } else {
+      // For Pyodide templates, just save to database
+      try {
+        handleTerminalOutput(`Saved: ${activeFile}`);
+        // Clear unsaved indicator
+        if (window && (window as any).clearUnsavedFile) {
+          (window as any).clearUnsavedFile(activeFile);
+        }
+        // Auto-save project if projectId exists
+        if (projectId) {
+          await saveProject();
+        }
+      } catch (error) {
+        console.error('Failed to save file:', error);
+        handleTerminalOutput(`Failed to save: ${activeFile}`);
       }
-    } catch (error) {
-      console.error('Failed to save file:', error);
-      handleTerminalOutput(`Failed to save: ${activeFile}`);
     }
   }
 
@@ -768,15 +1384,21 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     }
     setSidebarSection(section);
   }
-
   const executeMethod = async () => {
     if (!selectedContract || !selectedMethod) return;
     setIsDeploying(true);
     try {
       const artifactPath = `artifacts/${selectedContract.artifact}`;
-      const fileContent = fileContents[artifactPath] || '';
-      if (!fileContent) {
-        throw new Error(`Artifact file ${selectedContract.artifact} not found`);
+      let fileContent: string;
+      
+      if (selectedTemplate === 'PuyaPy' || selectedTemplate === 'Pyteal' || selectedTemplate === 'PuyaTs') {
+        fileContent = fileContents[artifactPath] || '';
+        if (!fileContent) {
+          throw new Error(`Artifact file ${selectedContract.artifact} not found`);
+        }
+      } else {
+        if (!webcontainer) return;
+        fileContent = await webcontainer.fs.readFile(artifactPath, "utf-8");
       }
       
       const appSpec = JSON.parse(fileContent);
@@ -793,20 +1415,32 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         indexerConfig: { server: "https://testnet-idx.algonode.cloud", token: "" },
       });
 
+      const appFactory = algorandClient.client.getAppFactory({
+        appSpec,
+        defaultSender: creator.address,
+        defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
+      });
+      console.log(selectedContract.appId)
+
       const appClient = algorandClient.client.getAppClientById({
         appSpec,
         appId : BigInt(selectedContract.appId),
         defaultSender : creator.address,
         defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
+
       });
 
-      const result = await appClient.send.call({
-        method: selectedMethod.name, 
-        args: executeArgs,
-        sender: creator.address, 
-        signer: algosdk.makeBasicAccountTransactionSigner(account),
-        populateAppCallResources: true,
-        staticFee: (2_000).microAlgo(),
+      console.log(executeArgs)
+
+      // const createAppParams = await appFactory.params.create({
+      //   method: selectedMethod.name,
+      //   args: executeArgs,
+      //   sender: creator.address, 
+      //   signer: algosdk.makeBasicAccountTransactionSigner(account)
+      // });
+      
+      const result = await appClient.send.call({method: selectedMethod.name, args: executeArgs,sender: creator.address, signer: algosdk.makeBasicAccountTransactionSigner(account),          populateAppCallResources: true,          staticFee: (2_000).microAlgo(),
+
       })
 
       toast({ title: "Method executed successfully!", description: `Result: ${result.return}` });
@@ -861,7 +1495,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         onGenerateClient={handleGenerateClient}
         isBuilding={isBuilding}
         onStop={handleStop}
-        isWebContainerReady={isReady}
+        isWebContainerReady={isWebContainerReady}
         onSave={handleSave}
       />
 
@@ -875,11 +1509,11 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
               onSectionChange={handleSidebarSectionChange}
               activeFile={activeFile}
               onFileSelect={openFile}
-              webcontainer={null}
+              webcontainer={webcontainer}
               onCreateFile={createFile}
               onRenameFile={renameFile}
               onDeleteFile={deleteFile}
-              isWebContainerReady={isReady}
+              isWebContainerReady={isWebContainerReady}
               fileStructure={currentFiles}
               onArtifactFileSelect={setActiveArtifactFile}
               deployedContracts={deployedContracts}
@@ -904,7 +1538,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   {activeArtifactFile ? (
                     <ArtifactFileViewerPanel
                       filePath={activeArtifactFile}
-                      webcontainer={null}
+                      webcontainer={webcontainer}
                       fileContents={fileContents}
                       selectedTemplate={selectedTemplate}
                       onDeploy={deployArtifact}
@@ -913,7 +1547,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   ) : sidebarSection === "tutorials" ? (
                     <TutorialPanel />
                   ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                    <ArtifactsPanel webcontainer={null} onDeploy={deployArtifact} />
+                    <ArtifactsPanel webcontainer={webcontainer} onDeploy={deployArtifact} />
                   ) : sidebarSection === "programs" ? (
                     <ProgramsPanel
                       deployedContracts={deployedContracts}
@@ -933,9 +1567,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       onFileClose={closeFile}
                       onFileContentChange={async (filePath, content) => {
                         setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                        
+                        // For WebContainer templates, update WebContainer
+                        if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
+                          try {
+                            await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
+                          } catch (error) {
+                            console.error('Failed to update file in WebContainer:', error);
+                          }
+                        }
                       }}
                       onSave={handleSave}
-                      webcontainer={null}
+                      webcontainer={webcontainer}
                       template={selectedTemplate.toLowerCase() as 'pyteal' | 'tealscript' | 'puyapy' | 'puyats'}
                     />
                   )}
@@ -965,7 +1608,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   <div className="h-full border-t" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
                     <WebContainerTerminal
                       title="BUILD TERMINAL"
-                      webcontainer={null}
+                      webcontainer={webcontainer}
                       output={terminalOutput}
                       onAddOutput={handleTerminalOutput}
                     />
@@ -996,6 +1639,15 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                               fileContent={activeFile ? fileContents[activeFile] : undefined}
                               onFileUpdate={async (filePath: string, content: string) => {
                                 setFileContents((prev) => ({ ...prev, [filePath]: content }));
+                                
+                                // Update WebContainer for supported templates
+                                if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
+                                  try {
+                                    await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
+                                  } catch (error) {
+                                    console.error('Failed to update file in WebContainer:', error);
+                                  }
+                                }
                               }}
                             />
                           </div>
@@ -1044,7 +1696,6 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           </>
         )}
       </ResizablePanelGroup>
-      
       <Dialog open={isDeployModalOpen} onOpenChange={setIsDeployModalOpen}>
         <DialogContent>
           <DialogHeader>
