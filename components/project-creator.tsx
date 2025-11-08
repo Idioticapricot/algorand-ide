@@ -39,8 +39,8 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user)
       
-      // If user is logged in and no project param, show create dialog
-      if (session?.user && !projectParam) {
+      // Always show dialog if no project param
+      if (!projectParam) {
         setShowDialog(true)
       }
     }
@@ -81,78 +81,87 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
     }
   }
 
-  const skipProjectCreation = () => {
-    setShowDialog(false)
-  }
-
-  // If user is not logged in or skipped project creation, show IDE directly
-  if (!user || (!showDialog && !projectParam)) {
-    return (
-      <AlgorandIDE
-        initialFiles={initialFiles}
-        selectedTemplate={selectedTemplate}
-        selectedTemplateName={selectedTemplateName}
-      />
-    )
+  const handleLogin = async () => {
+    setLoading(true)
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+      })
+    } catch (error) {
+      console.error('Login failed:', error)
+      setLoading(false)
+    }
   }
 
   return (
     <>
-      <AlgorandIDE
-        initialFiles={initialFiles}
-        selectedTemplate={selectedTemplate}
-        selectedTemplateName={selectedTemplateName}
-      />
+      {!showDialog && projectParam && (
+        <AlgorandIDE
+          initialFiles={initialFiles}
+          selectedTemplate={selectedTemplate}
+          selectedTemplateName={selectedTemplateName}
+          projectId={projectParam}
+        />
+      )}
       
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+      <Dialog open={showDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>{user ? 'Create New Project' : 'Login Required'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="name">Project Name</Label>
-              <Input
-                id="name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="My Algorand Project"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea
-                id="description"
-                value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
-                placeholder="Describe your project..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="shareable">Visibility</Label>
-              <Select value={shareable} onValueChange={setShareable}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="private">Private</SelectItem>
-                  <SelectItem value="public">Public</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button onClick={skipProjectCreation} variant="outline" className="flex-1">
-                Skip
+          {!user ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Please login to create a project and access the code editor.
+              </p>
+              <Button onClick={handleLogin} disabled={loading} className="w-full">
+                {loading ? 'Redirecting...' : 'Login with GitHub'}
               </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Project Name</Label>
+                <Input
+                  id="name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="My Algorand Project"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  id="description"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="Describe your project..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="shareable">Visibility</Label>
+                <Select value={shareable} onValueChange={setShareable}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">Private</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button 
                 onClick={createProject} 
                 disabled={!projectName.trim() || loading}
-                className="flex-1"
+                className="w-full"
               >
                 {loading ? 'Creating...' : 'Create Project'}
               </Button>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
