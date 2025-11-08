@@ -14,10 +14,22 @@ let puyaTsModules: { key: string; content: string }[] | null = null;
 
 function loadPuyaTsTypes() {
   if (puyaTsModules === null) {
+    // Skip loading during build to prevent Vercel build errors
+    if (typeof window === 'undefined') {
+      console.log('Skipping PuyaTs type loading during build');
+      puyaTsModules = [];
+      return puyaTsModules;
+    }
+    
     console.log('Loading PuyaTs modules from require.context...');
-    const context = (require as any).context("../types/@algorandfoundation/algorand-typescript", true, /\.d\.ts$/);
-    puyaTsModules = context.keys().map((key: string) => ({ key, content: context(key) }));
-    console.log('PuyaTs modules loaded:', puyaTsModules.length, puyaTsModules.map(m => m.key));
+    try {
+      const context = (require as any).context("../types/@algorandfoundation/algorand-typescript", true, /\.d\.ts$/);
+      puyaTsModules = context.keys().map((key: string) => ({ key, content: context(key) }));
+      console.log('PuyaTs modules loaded:', puyaTsModules.length, puyaTsModules.map(m => m.key));
+    } catch (error) {
+      console.warn('Failed to load PuyaTs types:', error);
+      puyaTsModules = [];
+    }
   }
   return puyaTsModules;
 }
