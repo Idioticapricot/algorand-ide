@@ -16,6 +16,8 @@ import {
   ChevronRight,
   Folder,
   File,
+  MessageSquare,
+  Wrench,
 } from "lucide-react"
 import FileTree from "@/components/file-tree"
 import { cn } from "@/lib/utils"
@@ -43,6 +45,8 @@ const sidebarSections = [
   { id: "programs", icon: Code, label: "Programs" },
   { id: "tutorials", icon: BookOpen, label: "Tutorials" },
   { id: "settings", icon: Settings, label: "Settings" },
+  { id: "ai-chat", icon: MessageSquare, label: "AI Chat" },
+  { id: "build-panel", icon: Wrench, label: "Build Panel" },
 ]
 
 

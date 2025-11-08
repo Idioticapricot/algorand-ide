@@ -9,6 +9,8 @@ import { CodeEditorDynamic as CodeEditor } from "@/components/code-editor-dynami
 import { WebContainerTerminal } from "@/components/webcontainer-terminal"
 import AIChat from "@/components/ai-chat"
 import { BuildToolbar } from "@/components/build-toolbar"
+import { BuildPanel } from "@/components/build-panel"
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { WalletPanel } from "@/components/wallet-panel"
 import { TutorialPanel } from "@/components/tutorial-panel"
 import { ArtifactsPanel } from "@/components/artifacts-panel"
@@ -200,6 +202,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [sidebarWidth, setSidebarWidth] = useState(280)
   const [terminalHeight, setTerminalHeight] = useState(300)
   const [walletWidth, setWalletWidth] = useState(320)
+  const [showAIChat, setShowAIChat] = useState(false)
+  const [showBuildPanel, setShowBuildPanel] = useState(false)
 
   // WebContainer state - only one instance
   const [webcontainer, setWebcontainer] = useState<WebContainer | null>(null)
@@ -1280,6 +1284,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
     }
   }
+
+  const handleSidebarSectionChange = (section: string) => {
+    if (section === 'ai-chat') {
+      setShowAIChat(true);
+      return;
+    }
+    if (section === 'build-panel') {
+      setShowBuildPanel(true);
+      return;
+    }
+    setSidebarSection(section);
+  }
   const executeMethod = async () => {
     if (!selectedContract || !selectedMethod) return;
     setIsDeploying(true);
@@ -1396,163 +1412,200 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       />
 
       {/* Main Layout */}
-      <div ref={containerRef} className="flex-1 flex overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar */}
-        <div
-          className="border-r flex-shrink-0 overflow-hidden"
-          style={{ width: `${sidebarWidth}px`, backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}
-        >
-          <Sidebar
-            activeSection={sidebarSection}
-            onSectionChange={setSidebarSection}
-            activeFile={activeFile}
-            onFileSelect={openFile}
-            webcontainer={webcontainer}
-            onCreateFile={createFile}
-            onRenameFile={renameFile}
-            onDeleteFile={deleteFile}
-            isWebContainerReady={isWebContainerReady}
-            fileStructure={currentFiles}
-            onArtifactFileSelect={setActiveArtifactFile}
-            deployedContracts={deployedContracts}
-            onContractSelect={(contract) => {
-              setSelectedContract(contract);
-              setIsMethodsModalOpen(true);
-            }}
-          />
-        </div>
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
+          <div className="h-full border-r" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
+            <Sidebar
+              activeSection={sidebarSection}
+              onSectionChange={handleSidebarSectionChange}
+              activeFile={activeFile}
+              onFileSelect={openFile}
+              webcontainer={webcontainer}
+              onCreateFile={createFile}
+              onRenameFile={renameFile}
+              onDeleteFile={deleteFile}
+              isWebContainerReady={isWebContainerReady}
+              fileStructure={currentFiles}
+              onArtifactFileSelect={setActiveArtifactFile}
+              deployedContracts={deployedContracts}
+              onContractSelect={(contract) => {
+                setSelectedContract(contract);
+                setIsMethodsModalOpen(true);
+              }}
+            />
+          </div>
+        </ResizablePanel>
 
-        {/* Sidebar Resize Handle */}
-        <div
-          className="w-1 bg-transparent hover:bg-[#0e639c] cursor-col-resize transition-colors flex-shrink-0 group"
-          onMouseDown={handleSidebarMouseDown}
-        >
-          <div className="w-full h-full group-hover:bg-[#0e639c] transition-colors"></div>
-        </div>
+        <ResizableHandle />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Editor Area */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Code Editor */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {activeArtifactFile ? (
-                <ArtifactFileViewerPanel
-                  filePath={activeArtifactFile}
-                  webcontainer={webcontainer}
-                  fileContents={fileContents}
-                  selectedTemplate={selectedTemplate}
-                  onDeploy={deployArtifact}
-                  onClose={() => setActiveArtifactFile(null)}
-                />
-              ) : sidebarSection === "tutorials" ? (
-                <TutorialPanel />
-              ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                <ArtifactsPanel webcontainer={webcontainer} onDeploy={deployArtifact} />
-              ) : sidebarSection === "programs" ? (
-                <ProgramsPanel
-                  deployedContracts={deployedContracts}
-                  onContractSelect={(contract) => {
-                    setSelectedContract(contract);
-                    setIsMethodsModalOpen(true);
-                  }}
-                />
-              ) : sidebarSection === "settings" ? (
-                <SettingsPanel />
-              ) : (
-                <CodeEditor
-                  activeFile={activeFile}
-                  openFiles={openFiles}
-                  fileContents={fileContents}
-                  onFileSelect={setActiveFile}
-                  onFileClose={closeFile}
-                  onFileContentChange={async (filePath, content) => {
-                    setFileContents((prev) => ({ ...prev, [filePath]: content }))
-                    
-                    // For WebContainer templates, update WebContainer
-                    if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
-                      try {
-                        await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
-                      } catch (error) {
-                        console.error('Failed to update file in WebContainer:', error);
-                      }
-                    }
-                    
+        <ResizablePanel defaultSize={showBuildPanel ? 50 : 80}>
+          <ResizablePanelGroup direction="vertical">
+            {/* Editor Area */}
+            <ResizablePanel defaultSize={70}>
+              <ResizablePanelGroup direction="horizontal">
+                {/* Code Editor */}
+                <ResizablePanel defaultSize={showWallet ? 70 : 100}>
+                  {activeArtifactFile ? (
+                    <ArtifactFileViewerPanel
+                      filePath={activeArtifactFile}
+                      webcontainer={webcontainer}
+                      fileContents={fileContents}
+                      selectedTemplate={selectedTemplate}
+                      onDeploy={deployArtifact}
+                      onClose={() => setActiveArtifactFile(null)}
+                    />
+                  ) : sidebarSection === "tutorials" ? (
+                    <TutorialPanel />
+                  ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
+                    <ArtifactsPanel webcontainer={webcontainer} onDeploy={deployArtifact} />
+                  ) : sidebarSection === "programs" ? (
+                    <ProgramsPanel
+                      deployedContracts={deployedContracts}
+                      onContractSelect={(contract) => {
+                        setSelectedContract(contract);
+                        setIsMethodsModalOpen(true);
+                      }}
+                    />
+                  ) : sidebarSection === "settings" ? (
+                    <SettingsPanel />
+                  ) : (
+                    <CodeEditor
+                      activeFile={activeFile}
+                      openFiles={openFiles}
+                      fileContents={fileContents}
+                      onFileSelect={setActiveFile}
+                      onFileClose={closeFile}
+                      onFileContentChange={async (filePath, content) => {
+                        setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                        
+                        // For WebContainer templates, update WebContainer
+                        if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
+                          try {
+                            await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
+                          } catch (error) {
+                            console.error('Failed to update file in WebContainer:', error);
+                          }
+                        }
+                      }}
+                      onSave={handleSave}
+                      webcontainer={webcontainer}
+                    />
+                  )}
+                </ResizablePanel>
 
-                  }}
-                  onSave={handleSave}
-                  webcontainer={webcontainer}
-                />
-              )}
-            </div>
+                {/* Wallet Panel */}
+                {showWallet && wallet && (
+                  <>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
+                      <div className="h-full border-l" style={{ backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}>
+                        <WalletPanel wallet={wallet} onClose={() => setShowWallet(false)} />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
+            </ResizablePanel>
 
-            {/* Wallet Panel */}
-            {showWallet && wallet && (
-              <>
-                {/* Wallet Resize Handle */}
-                <div
-                  className="w-1 bg-transparent hover:bg-[var(--button-color)] cursor-col-resize transition-colors flex-shrink-0 group"
-                  onMouseDown={handleWalletMouseDown}
-                >
-                  <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
+            <ResizableHandle />
+
+            {/* Bottom Panel - Terminal */}
+            <ResizablePanel defaultSize={30} minSize={20}>
+              <ResizablePanelGroup direction="horizontal">
+                {/* Build Terminal */}
+                <ResizablePanel defaultSize={showAIChat ? 50 : 100}>
+                  <div className="h-full border-t" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
+                    <WebContainerTerminal
+                      title="BUILD TERMINAL"
+                      webcontainer={webcontainer}
+                      output={terminalOutput}
+                      onAddOutput={handleTerminalOutput}
+                    />
+                  </div>
+                </ResizablePanel>
+
+                {/* AI Chat Panel */}
+                {showAIChat && (
+                  <>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={50} minSize={30}>
+                      <div className="h-full border-t border-l" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
+                        <div className="h-full flex flex-col">
+                          <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
+                            <span className="text-[#cccccc]">AI Chat</span>
+                            <button
+                              onClick={() => setShowAIChat(false)}
+                              className="text-[#cccccc] hover:text-white transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="flex-1">
+                            <AIChat 
+                              title="" 
+                              selectedTemplate={selectedTemplate}
+                              activeFile={activeFile}
+                              fileContent={activeFile ? fileContents[activeFile] : undefined}
+                              onFileUpdate={async (filePath: string, content: string) => {
+                                setFileContents((prev) => ({ ...prev, [filePath]: content }));
+                                
+                                // Update WebContainer for supported templates
+                                if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
+                                  try {
+                                    await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
+                                  } catch (error) {
+                                    console.error('Failed to update file in WebContainer:', error);
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
+
+        {/* Build Panel */}
+        {showBuildPanel && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+              <div className="h-full border-l" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
+                <div className="h-full flex flex-col">
+                  <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
+                    <span className="text-[#cccccc]">Build Panel</span>
+                    <button
+                      onClick={() => setShowBuildPanel(false)}
+                      className="text-[#cccccc] hover:text-white transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <BuildPanel
+                      isBuilding={isBuilding}
+                      buildOutput={terminalOutput}
+                      onBuild={handleBuild}
+                      onTest={handleTest}
+                      onDeploy={handleDeploy}
+                      onStop={handleStop}
+                      artifacts={currentFiles.artifacts ? Object.keys(currentFiles.artifacts.directory).map(name => ({ name, size: 'Unknown' })) : []}
+                      onDownloadSnapshot={handleDownloadSnapshot}
+                    />
+                  </div>
                 </div>
-
-                <div
-                  className="border-l flex-shrink-0 overflow-hidden"
-                  style={{ width: `${walletWidth}px`, backgroundColor: "var(--sidebar-color)", borderColor: "var(--border-color)" }}
-                >
-                  <WalletPanel wallet={wallet} onClose={() => setShowWallet(false)} />
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Terminal Resize Handle */}
-          <div
-            className="h-1 bg-transparent hover:bg-[var(--button-color)] cursor-row-resize transition-colors flex-shrink-0 group"
-            onMouseDown={handleTerminalMouseDown}
-          >
-            <div className="w-full h-full group-hover:bg-[var(--button-color)] transition-colors"></div>
-          </div>
-
-          {/* Dual Terminals - WebContainer + XTerm */}
-          <div
-            className="border-t flex-shrink-0 overflow-hidden flex"
-            style={{ height: `${terminalHeight}px`, backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}
-          >
-            <div className="flex-1 border-r" style={{ borderColor: "var(--border-color)" }}>
-              <WebContainerTerminal
-                title="BUILD TERMINAL"
-                webcontainer={webcontainer}
-                output={terminalOutput}
-                onAddOutput={handleTerminalOutput}
-              />
-            </div>
-            <div className="flex-1">
-              <AIChat 
-                title="AI CHAT" 
-                selectedTemplate={selectedTemplate}
-                activeFile={activeFile}
-                fileContent={activeFile ? fileContents[activeFile] : undefined}
-                onFileUpdate={async (filePath: string, content: string) => {
-                  setFileContents((prev) => ({ ...prev, [filePath]: content }));
-                  
-                  // Update WebContainer for supported templates
-                  if (webcontainer && selectedTemplate !== 'PuyaPy' && selectedTemplate !== 'Pyteal' && selectedTemplate !== 'PyTeal' && selectedTemplate !== 'PuyaTs') {
-                    try {
-                      await updateFileInWebContainer(webcontainer, filePath, content, selectedTemplate);
-                    } catch (error) {
-                      console.error('Failed to update file in WebContainer:', error);
-                    }
-                  }
-                  
-
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
       <Dialog open={isDeployModalOpen} onOpenChange={setIsDeployModalOpen}>
         <DialogContent>
           <DialogHeader>
