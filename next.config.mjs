@@ -23,6 +23,12 @@ const nextConfig = {
   turbopack: {},
   
   webpack: (config, { isServer }) => {
+    // Ignore problematic TypeScript definition files during build
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '../types/@algorandfoundation/algorand-typescript': false,
+    };
+    
     if (!isServer) {
       config.module.rules.push({
         test: /\.d\.ts$/,

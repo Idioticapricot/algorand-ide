@@ -164,6 +164,12 @@ function setupPuyaPyIntelliSense(monaco: any) {
 }
 
 export function setupMonacoTypes(monaco: any, template?: Template) {
+  // Skip all Monaco setup during build to prevent import errors
+  if (typeof window === 'undefined') {
+    console.log('Skipping Monaco setup during build');
+    return;
+  }
+  
   console.log('Setting up Monaco types for template:', template);
   
   // Load template-specific types and IntelliSense
