@@ -223,8 +223,15 @@ export function Sidebar({
         <div className="flex-1 overflow-auto">
           {activeSection === "explorer" && (
             <div className="py-2">
-              <div className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#969696] mb-2">
-                Hello Algorand
+              <div className="px-3 py-1 mb-2 flex items-center space-x-2">
+                <img 
+                  src="/logo.png" 
+                  alt="Algorand IDE Logo" 
+                  className="w-4 h-4 object-contain"
+                />
+                <span className="text-xs font-medium uppercase tracking-wide text-[#969696]">
+                  Hello Algorand
+                </span>
               </div>
               <FileTree
                 fileStructure={fileStructureProp}

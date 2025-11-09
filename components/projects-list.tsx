@@ -85,7 +85,14 @@ export function ProjectsList() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">My Projects</h2>
+        <div className="flex items-center space-x-3">
+          <img 
+            src="/logo.png" 
+            alt="Algorand IDE Logo" 
+            className="w-8 h-8 object-contain"
+          />
+          <h2 className="text-2xl font-bold">My Projects</h2>
+        </div>
         <Button asChild>
           <Link href="/">
             <Plus className="w-4 h-4 mr-2" />
