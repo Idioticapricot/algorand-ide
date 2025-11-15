@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,18 @@ export default function HomePage() {
         <GitHubLogin />
       </div>
       <div className="max-w-md w-full space-y-8 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Algorand IDE
-        </h1>
+        <div className="flex items-center justify-center space-x-1">
+          <Image 
+            src="/logo.png" 
+            alt="Algorand IDE Logo" 
+            width={80}
+            height={80}
+            className="object-contain p-2"
+          />
+          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
+            Algorand IDE
+          </h1>
+        </div>
         <p className="mt-2 text-lg text-gray-500 dark:text-gray-400">
           Choose a template to start building your Algorand Smart Contract.
         </p>
