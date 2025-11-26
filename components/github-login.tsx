@@ -65,10 +65,5 @@ export function GitHubLogin() {
     )
   }
 
-  return (
-    <Button onClick={signInWithGitHub} className="flex items-center gap-2">
-      <Github className="w-4 h-4" />
-      Login with GitHub
-    </Button>
-  )
+
 }

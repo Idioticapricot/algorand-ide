@@ -44,7 +44,7 @@ export function Terminal() {
       id: "1",
       name: "Terminal 1",
       lines: [
-        { type: "success", content: "$ Welcome to Algorand IDE Terminal" },
+        { type: "success", content: "$ Welcome to Algocraft IDE Terminal" },
         { type: "output", content: 'Type "help" to see available commands' },
       ],
       currentInput: "",
@@ -127,7 +127,7 @@ export function Terminal() {
       case "clear":
         updateTerminal(terminalId, {
           lines: [
-            { type: "success", content: "$ Welcome to Algorand IDE Terminal" },
+            { type: "success", content: "$ Welcome to Algocraft IDE Terminal" },
             { type: "output", content: 'Type "help" to see available commands' },
           ],
         })
@@ -281,7 +281,7 @@ export function Terminal() {
       id: newId,
       name: `Terminal ${newId}`,
       lines: [
-        { type: "success", content: "$ Welcome to Algorand IDE Terminal" },
+        { type: "success", content: "$ Welcome to Algocraft IDE Terminal" },
         { type: "output", content: 'Type "help" to see available commands' },
       ],
       currentInput: "",

@@ -25,6 +25,7 @@ const supabase = createClient(
 )
 
 import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import algosdk from "algosdk"
 import {
   Dialog,
@@ -77,6 +78,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [currentDeployFilename, setCurrentDeployFilename] = useState<string | null>(null);
   const [contractArgs, setContractArgs] = useState<any[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deployStatus, setDeployStatus] = useState<'deploying' | 'success' | 'error' | null>(null);
+  const [deployedAppId, setDeployedAppId] = useState<string>('');
   const [isMethodsModalOpen, setIsMethodsModalOpen] = useState(false);
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
@@ -257,12 +260,19 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         return;
       }
       
+      const updatedFiles = { ...currentFiles };
+      if (!updatedFiles.artifacts) {
+        updatedFiles.artifacts = { directory: {} };
+      }
+      const newFileContents = { ...fileContents };
+      
       for (const filePath of algoFiles) {
         const filename = filePath.split('/').pop();
+        const contractName = filename?.replace('.algo.ts', '') || 'contract';
         const code = fileContents[filePath];
         
-        handleTerminalOutput(`Compiling ${filename}...`);
-        console.log(`[BUILD] PuyaTs compilation started for ${filename}`);
+        handleTerminalOutput(`Compiling ${filePath}...`);
+        console.log(`[BUILD] PuyaTs compilation started for ${filePath}`);
         
         const response = await fetch('/api/compile', {
           method: 'POST',
@@ -280,32 +290,27 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         console.log(`[BUILD] PuyaTs compilation result:`, result);
         
         if (result.ok && result.files) {
-          const updatedFiles = { ...currentFiles };
-          if (!updatedFiles.artifacts) {
-            updatedFiles.artifacts = { directory: {} };
-          }
-          
-          const newFileContents = { ...fileContents };
-          
           for (const [fileName, fileData] of Object.entries(result.files)) {
             const data = (fileData as any).data;
             const encoding = (fileData as any).encoding;
             const content = encoding === 'base64' ? atob(data) : data;
             
-            updatedFiles.artifacts.directory[fileName] = {
+            const uniqueFileName = fileName.replace(/^[^.]+/, contractName);
+            
+            updatedFiles.artifacts.directory[uniqueFileName] = {
               file: { contents: content }
             };
             
-            newFileContents[`artifacts/${fileName}`] = content;
+            newFileContents[`artifacts/${uniqueFileName}`] = content;
           }
-          
-          setCurrentFiles(updatedFiles);
-          setFileContents(newFileContents);
-          handleTerminalOutput(`Successfully compiled ${filename}`);
+          handleTerminalOutput(`Successfully compiled ${filePath}`);
         } else {
-          handleTerminalOutput(`Failed to compile ${filename}: ${result.error || 'Unknown error'}`);
+          handleTerminalOutput(`Failed to compile ${filePath}: ${result.error || 'Unknown error'}`);
         }
       }
+      
+      setCurrentFiles(updatedFiles);
+      setFileContents(newFileContents);
     } catch (error: any) {
       console.error('[BUILD] PuyaTs build error:', error);
       handleTerminalOutput(`Build failed: ${error.message || error}`);
@@ -645,6 +650,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   const executeDeploy = async (filename: string, args: (string | number)[]) => {
     setIsDeploying(true);
+    setDeployStatus('deploying');
     console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
       const artifactPath = `artifacts/${filename}`;
@@ -717,10 +723,17 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const updated = [deployed, ...prev];
       localStorage.setItem("deployedContracts", JSON.stringify(updated));
       setDeployedContracts(updated);
-      toast({ title: "Deployment completed!", description: `App ID: ${deployed.appId}` });
+      setDeployedAppId(deployed.appId);
+      setDeployStatus('success');
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
-      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+      setDeployStatus('error');
+      toast({ 
+        title: "❌ Deployment Failed", 
+        description: error.message || String(error), 
+        variant: "destructive",
+        duration: 5000
+      });
     } finally {
       setIsDeploying(false);
       setIsDeployModalOpen(false);
@@ -770,7 +783,13 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
-      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+      setDeployStatus('error');
+      toast({ 
+        title: "❌ Deployment Failed", 
+        description: error.message || String(error), 
+        variant: "destructive",
+        duration: 5000
+      });
     }
   };
 
@@ -1214,6 +1233,43 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={deployStatus !== null} onOpenChange={(open) => !open && setDeployStatus(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {deployStatus === 'deploying' && 'Deploying Contract'}
+              {deployStatus === 'success' && '✅ Deployment Successful!'}
+              {deployStatus === 'error' && '❌ Deployment Failed'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-8">
+            {deployStatus === 'deploying' && (
+              <>
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-sm text-muted-foreground">Deploying to TestNet...</p>
+              </>
+            )}
+            {deployStatus === 'success' && (
+              <>
+                <div className="text-6xl mb-4">🎉</div>
+                <p className="text-lg font-medium mb-2">Contract Deployed!</p>
+                <p className="text-sm text-muted-foreground mb-4">App ID: {deployedAppId}</p>
+                <Button
+                  onClick={() => {
+                    window.open(`https://lora.algokit.io/testnet/application/${deployedAppId}`, '_blank');
+                    setDeployStatus(null);
+                  }}
+                  className="w-full"
+                >
+                  View on Explorer
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Toaster />
     </div>
   )
 }

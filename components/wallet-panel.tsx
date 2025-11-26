@@ -83,6 +83,15 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
     try {
       // Fetch account info to get balance
       const accountResponse = await fetch(`${currentNetwork.indexer}/v2/accounts/${wallet.address}`)
+      
+      if (accountResponse.status === 404) {
+        // New wallet not yet on-chain
+        setRealBalance(0)
+        setTransactions([])
+        setIsLoading(false)
+        return
+      }
+      
       if (!accountResponse.ok) {
         throw new Error(`Failed to fetch account info: ${accountResponse.status}`)
       }

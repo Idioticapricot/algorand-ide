@@ -110,3 +110,47 @@ CREATE TRIGGER update_project_files_updated_at
   BEFORE UPDATE ON project_files
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- AI Embeddings tables (optional - for RAG functionality)
+-- These tables store documentation chunks with vector embeddings for semantic search
+
+-- PyTeal documentation embeddings
+CREATE TABLE IF NOT EXISTS pyteal (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  text TEXT NOT NULL,
+  embedding TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- TealScript documentation embeddings
+CREATE TABLE IF NOT EXISTS tealscript (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  text TEXT NOT NULL,
+  embedding TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- PuyaPy (AlgoPy) documentation embeddings
+CREATE TABLE IF NOT EXISTS algopy (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  text TEXT NOT NULL,
+  embedding TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- PuyaTs documentation embeddings
+CREATE TABLE IF NOT EXISTS puyats (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  text TEXT NOT NULL,
+  embedding TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for embeddings tables (optional, for faster queries)
+CREATE INDEX IF NOT EXISTS idx_pyteal_created_at ON pyteal(created_at);
+CREATE INDEX IF NOT EXISTS idx_tealscript_created_at ON tealscript(created_at);
+CREATE INDEX IF NOT EXISTS idx_algopy_created_at ON algopy(created_at);
+CREATE INDEX IF NOT EXISTS idx_puyats_created_at ON puyats(created_at);
+
+-- Note: Embeddings tables are public (no RLS) for read access
+-- They contain documentation only, no user data

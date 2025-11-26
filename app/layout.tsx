@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Algorand IDE",
+  title: "Algocraft IDE",
   description: "An online IDE for Algorand development",
   icons: {
     icon: "/favicon.ico",
