@@ -253,6 +253,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     handleTerminalOutput("Compiling PuyaTs contract...");
     
     try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const updatedFiles = { ...currentFiles };
+      updatedFiles.artifacts = { directory: {} };
+      
+      const newFileContents = { ...fileContents };
+      Object.keys(newFileContents).forEach(key => {
+        if (key.startsWith('artifacts/') || key.startsWith('tmp/') || key.startsWith('cache/') || key.startsWith('dist/')) {
+          delete newFileContents[key];
+        }
+      });
+      
       const algoFiles = Object.keys(fileContents).filter(path => path.endsWith('.algo.ts'));
       
       if (algoFiles.length === 0) {
@@ -260,16 +272,19 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         return;
       }
       
-      const updatedFiles = { ...currentFiles };
-      if (!updatedFiles.artifacts) {
-        updatedFiles.artifacts = { directory: {} };
-      }
-      const newFileContents = { ...fileContents };
-      
       for (const filePath of algoFiles) {
         const filename = filePath.split('/').pop();
         const contractName = filename?.replace('.algo.ts', '') || 'contract';
         const code = fileContents[filePath];
+        
+        console.log("=== COMPILING FILE ===");
+        console.log(filePath);
+        console.log(code);
+        
+        if (!code || code.trim().length === 0) {
+          handleTerminalOutput(`Skipping empty file: ${filePath}`);
+          continue;
+        }
         
         handleTerminalOutput(`Compiling ${filePath}...`);
         console.log(`[BUILD] PuyaTs compilation started for ${filePath}`);
@@ -278,11 +293,13 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Force-Fresh-Compiler': 'true',
           },
           body: JSON.stringify({
             type: 'puyats',
             filename,
-            code
+            code,
+            forceFresh: true
           })
         });
         
@@ -684,18 +701,25 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      console.log("appFactory.send keys:", Object.keys(appFactory.send));
+      const hasBareCreate = appSpec.bare_call_config?.no_op === 'CREATE';
+      const hasCreateMethod = appSpec.hints?.['createApplication()void'];
       
-      const hasBare = 'bare' in appFactory.send;
-      const deployResult = hasBare
-        ? await (appFactory.send as any).bare.create({
-            sender: account.addr,
-            signer: algosdk.makeBasicAccountTransactionSigner(account)
-          })
-        : await appFactory.send.create({
-            sender: account.addr,
-            signer: algosdk.makeBasicAccountTransactionSigner(account)
-          });
+      let deployResult;
+      if (hasBareCreate) {
+        deployResult = await (appFactory.send as any).bare.create({
+          sender: account.addr,
+          signer: algosdk.makeBasicAccountTransactionSigner(account)
+        });
+      } else if (hasCreateMethod) {
+        deployResult = await appFactory.send.create({
+          method: 'createApplication',
+          methodArgs: args,
+          sender: account.addr,
+          signer: algosdk.makeBasicAccountTransactionSigner(account)
+        });
+      } else {
+        throw new Error('Contract has no CREATE handler (bare or ABI)');
+      }
 
       console.log("Deploy result:", deployResult);
       let appId = 'unknown';
@@ -1012,7 +1036,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       onFileSelect={setActiveFile}
                       onFileClose={closeFile}
                       onFileContentChange={async (filePath, content) => {
-                        setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                        setFileContents((prev) => {
+                          const updated = { ...prev, [filePath]: content };
+                          return updated;
+                        });
                       }}
                       onSave={handleSave}
                       webcontainer={null}

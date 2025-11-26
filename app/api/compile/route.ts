@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         break
       case 'puyats':
         endpoint = '/compile-puyats'
-        requestBody = { filename: payload.filename, code: payload.code }
+        requestBody = { filename: payload.filename, code: payload.code, forceFresh: payload.forceFresh }
         break
       case 'tealscript':
         endpoint = '/compile-tealscript'
