@@ -18,6 +18,7 @@ interface AIChatProps {
   activeFile?: string;
   fileContent?: string;
   onFileUpdate?: (filePath: string, content: string) => void;
+  onClose?: () => void;
 }
 
 interface Message {
@@ -37,7 +38,7 @@ if (supabaseUrl === "https://toqvsuthxooqjelcayhm.supabase.co") {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate }) => {
+const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate, onClose }) => {
   const [selectedModel, setSelectedModel] = useState<string>('meta-llama/llama-3.2-3b-instruct:free');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
@@ -503,74 +504,90 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
 
   return (
     <div className="h-full flex flex-col bg-[#1e1e1e] text-[#d4d4d4]">
-      <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
-        <span className="text-[#cccccc]">{title}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs">Template: {selectedTemplate}</span>
-          {activeFile && <span className="text-xs text-blue-400">File: {activeFile.split('/').pop()}</span>}
-          <span className="text-xs">Model:</span>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-[180px] h-7 text-xs">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (Free)</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="bg-[#2d2d30] border-b border-[#3e3e42] flex-shrink-0">
+        <div className="h-9 flex items-center justify-between px-3 text-xs font-medium">
+          <span className="text-[#cccccc] uppercase tracking-wide">{title}</span>
+          <div className="flex items-center gap-2">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-[140px] h-6 text-xs">
+                <SelectValue placeholder="Model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B</SelectItem>
+              </SelectContent>
+            </Select>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-[#cccccc] hover:text-white transition-colors"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="px-3 pb-2 flex items-center gap-2 text-xs text-[#969696]">
+          <span>Template: <span className="text-[#cccccc]">{selectedTemplate}</span></span>
+          {activeFile && (
+            <>
+              <span>•</span>
+              <span>File: <span className="text-blue-400">{activeFile.split('/').pop()}</span></span>
+            </>
+          )}
         </div>
       </div>
-      <ScrollArea className="flex-1 p-4">
-        <div className="flex flex-col space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-[#969696]">
-              <h2 className="text-xl mb-2">Welcome back, builder!</h2>
-              <p className="mb-1">Ask Questions about {selectedTemplate} development</p>
-              <p className="text-sm">I'll search through the {getTableName(selectedTemplate)} knowledge base to help you!</p>
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] p-4 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-white border border-gray-700'
-                  }`}
-                >
-                  {message.type === 'user' ? (
-                    <div className="whitespace-pre-wrap">{message.text}</div>
-                  ) : (
-                    <div className="ai-chat-prose">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                        components={markdownComponents}
-                      >
-                        {message.text}
-                      </ReactMarkdown>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ minHeight: 0 }}>
+        <div className="p-4 flex flex-col space-y-4">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center min-h-[200px] text-center text-[#969696]">
+                  <h2 className="text-xl mb-2">Welcome back, builder!</h2>
+                  <p className="mb-1">Ask Questions about {selectedTemplate} development</p>
+                  <p className="text-sm">I'll search through the {getTableName(selectedTemplate)} knowledge base to help you!</p>
+                </div>
+              ) : (
+                messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] p-4 rounded-lg break-words ${
+                        message.type === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 text-white border border-gray-700'
+                      }`}
+                    >
+                      {message.type === 'user' ? (
+                        <div className="whitespace-pre-wrap">{message.text}</div>
+                      ) : (
+                        <div className="ai-chat-prose">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                            components={markdownComponents}
+                          >
+                            {message.text}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))
+              )}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] p-4 rounded-lg bg-gray-800 text-white border border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      Thinking...
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] p-4 rounded-lg bg-gray-800 text-white border border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  Thinking...
-                </div>
-              </div>
-            </div>
-          )}
+              )}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
-      <div className="p-4 border-t border-[#3e3e42] flex items-center gap-2">
+      </div>
+      <div className="p-4 border-t border-[#3e3e42] flex items-center gap-2 flex-shrink-0">
         <Input
           type="text"
           placeholder="Ask about Algorand development..."

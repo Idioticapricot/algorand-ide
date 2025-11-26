@@ -678,12 +678,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      const deployResult = await appFactory.send.create({
-          sender: account.addr,
-          signer: algosdk.makeBasicAccountTransactionSigner(account),
-          method: "createApplication",
-          args: args
-      });
+      console.log("appFactory.send keys:", Object.keys(appFactory.send));
+      
+      const hasBare = 'bare' in appFactory.send;
+      const deployResult = hasBare
+        ? await (appFactory.send as any).bare.create({
+            sender: account.addr,
+            signer: algosdk.makeBasicAccountTransactionSigner(account)
+          })
+        : await appFactory.send.create({
+            sender: account.addr,
+            signer: algosdk.makeBasicAccountTransactionSigner(account)
+          });
 
       console.log("Deploy result:", deployResult);
       let appId = 'unknown';
@@ -731,20 +737,30 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
       
       const appSpec = JSON.parse(fileContent);
+      console.log("Parsed appSpec:", appSpec);
 
       let contractSpec = appSpec;
       if (filename.endsWith('.arc32.json') && appSpec.contract) {
         contractSpec = appSpec.contract;
       }
 
-      const createMethod = contractSpec.methods.find((m: any) => m.name === "createApplication");
+      if (!contractSpec.methods || !Array.isArray(contractSpec.methods)) {
+        console.log("No methods found, deploying without args");
+        await executeDeploy(filename, []);
+        return;
+      }
+
+      const createMethod = contractSpec.methods.find((m: any) => 
+        m && (m.name === "createApplication" || m.actions?.create === true)
+      );
 
       if (createMethod && createMethod.args && createMethod.args.length > 0) {
         setCurrentDeployFilename(filename);
         setContractArgs(createMethod.args);
         const initialArgs = createMethod.args.map((arg: any) => {
-            if (arg.type.includes('uint')) return 0;
-            if (arg.type === 'address') return wallet?.address || '';
+            const argType = arg?.type || arg?.struct || '';
+            if (typeof argType === 'string' && argType.includes('uint')) return 0;
+            if (argType === 'address') return wallet?.address || '';
             return '';
         });
         setDeployArgs(initialArgs);
@@ -800,7 +816,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       console.error('Failed to save file:', error);
       handleTerminalOutput(`Failed to save: ${activeFile}`);
     }
-  }
+  };
 
   const handleSidebarSectionChange = (section: string) => {
     if (section === 'ai-chat') {
@@ -812,7 +828,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       return;
     }
     setSidebarSection(section);
-  }
+  };
 
   const executeMethod = async () => {
     if (!selectedContract || !selectedMethod) return;
@@ -958,7 +974,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   ) : sidebarSection === "tutorials" ? (
                     <TutorialPanel />
                   ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                    <ArtifactsPanel webcontainer={null} onDeploy={deployArtifact} />
+                    <ArtifactsPanel webcontainer={null} onDeploy={deployArtifact} fileContents={fileContents} />
                   ) : sidebarSection === "programs" ? (
                     <ProgramsPanel
                       deployedContracts={deployedContracts}
@@ -1023,28 +1039,16 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                     <ResizableHandle />
                     <ResizablePanel defaultSize={50} minSize={30}>
                       <div className="h-full border-t border-l" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
-                        <div className="h-full flex flex-col">
-                          <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
-                            <span className="text-[#cccccc]">AI Chat</span>
-                            <button
-                              onClick={() => setShowAIChat(false)}
-                              className="text-[#cccccc] hover:text-white transition-colors"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className="flex-1">
-                            <AIChat 
-                              title="" 
-                              selectedTemplate={selectedTemplate}
-                              activeFile={activeFile}
-                              fileContent={activeFile ? fileContents[activeFile] : undefined}
-                              onFileUpdate={async (filePath: string, content: string) => {
-                                setFileContents((prev) => ({ ...prev, [filePath]: content }));
-                              }}
-                            />
-                          </div>
-                        </div>
+                        <AIChat 
+                          title="AI Chat" 
+                          selectedTemplate={selectedTemplate}
+                          activeFile={activeFile}
+                          fileContent={activeFile ? fileContents[activeFile] : undefined}
+                          onFileUpdate={async (filePath: string, content: string) => {
+                            setFileContents((prev) => ({ ...prev, [filePath]: content }));
+                          }}
+                          onClose={() => setShowAIChat(false)}
+                        />
                       </div>
                     </ResizablePanel>
                   </>
@@ -1105,25 +1109,29 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           ) : (
             <>
               <div className="grid gap-4 py-4">
-                {contractArgs.map((arg, index) => (
-                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
+                {contractArgs.map((arg, index) => {
+                  const argType = arg.type || arg.struct || 'string';
+                  const isUint = typeof argType === 'string' && argType.includes('uint');
+                  return (
+                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name || index}>
                     <Label htmlFor={`arg-${index}`} className="text-right">
-                      {arg.name} ({arg.type})
+                      {arg.name} ({argType})
                     </Label>
                     <Input
                       id={`arg-${index}`}
                       value={deployArgs[index] || ''}
                       onChange={(e) => {
                         const newArgs = [...deployArgs];
-                        const value = arg.type.startsWith('uint') ? Number(e.target.value) : e.target.value;
+                        const value = isUint ? Number(e.target.value) : e.target.value;
                         newArgs[index] = value;
                         setDeployArgs(newArgs);
                       }}
                       className="col-span-3"
-                      type={arg.type.startsWith('uint') ? 'number' : 'text'}
+                      type={isUint ? 'number' : 'text'}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <DialogFooter>
                 <Button onClick={() => {

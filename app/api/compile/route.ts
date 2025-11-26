@@ -12,8 +12,11 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case 'puyapy':
-      case 'pyteal':
         endpoint = '/compile-puyapy'
+        requestBody = { code: payload.code }
+        break
+      case 'pyteal':
+        endpoint = '/compile-pyteal'
         requestBody = { code: payload.code }
         break
       case 'puyats':

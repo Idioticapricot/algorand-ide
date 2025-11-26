@@ -42,10 +42,8 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user)
       
-      // Always show dialog if no project param
-      if (!projectParam) {
-        setShowDialog(true)
-      }
+      // Skip login - go directly to IDE
+      setShowDialog(false)
     }
     getUser()
   }, [projectParam])
@@ -140,14 +138,12 @@ export function ProjectCreator({ initialFiles, selectedTemplate, selectedTemplat
 
   return (
     <>
-      {!showDialog && projectParam && (
-        <AlgorandIDE
-          initialFiles={initialFiles}
-          selectedTemplate={selectedTemplate}
-          selectedTemplateName={selectedTemplateName}
-          projectId={projectParam}
-        />
-      )}
+      <AlgorandIDE
+        initialFiles={initialFiles}
+        selectedTemplate={selectedTemplate}
+        selectedTemplateName={selectedTemplateName}
+        projectId={projectParam}
+      />
       
       <Dialog open={showDialog} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md">

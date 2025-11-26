@@ -175,7 +175,8 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
       return amount > 0 ? `+${amount}` : `${amount}`
     }
     if (tx["application-transaction"]) {
-      return `App ${tx["application-transaction"]["application-id"]}`
+      const fee = (tx as any).fee || 1000
+      return `-${(fee / 1000000).toFixed(6)}`
     }
     return "N/A"
   }
@@ -229,11 +230,13 @@ export function WalletPanel({ wallet, onClose }: WalletPanelProps) {
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded"></div>
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">Algorand Wallet</div>
               <div className="text-xs text-[#969696] flex items-center gap-1">
-                {wallet.address || "Invalid Address"}
-                <Button variant="ghost" size="icon" className="w-3 h-3" onClick={copyAddress}>
+                <span className="truncate" title={wallet.address}>
+                  {wallet.address || "Invalid Address"}
+                </span>
+                <Button variant="ghost" size="icon" className="w-3 h-3 flex-shrink-0" onClick={copyAddress}>
                   <Copy className="w-2 h-2" />
                 </Button>
               </div>
