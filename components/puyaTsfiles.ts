@@ -6,11 +6,15 @@ export const puyaTsfiles = {
 
       "helloworld.algo.ts": {
     file: {
-      contents: `import { Contract } from '@algorandfoundation/algorand-typescript'
+      contents: `import { Contract, uint64 } from '@algorandfoundation/algorand-typescript'
 
 export class HelloWorld extends Contract {
   public hello(name: string): string {
     return \`Hello \${name}\`
+  }
+
+  public add(a: uint64, b: uint64): uint64 {
+    return a + b
   }
 }
 `,

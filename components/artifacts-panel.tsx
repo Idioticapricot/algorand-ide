@@ -5,12 +5,22 @@ import React, { useState, useEffect } from "react"
 interface ArtifactsPanelProps {
   webcontainer: any;
   onDeploy: (filename: string) => Promise<void>;
+  fileContents?: Record<string, string>;
 }
 
-export function ArtifactsPanel({ webcontainer, onDeploy }: ArtifactsPanelProps) {
+export function ArtifactsPanel({ webcontainer, onDeploy, fileContents }: ArtifactsPanelProps) {
   const [artifactFiles, setArtifactFiles] = useState<string[]>([]);
 
   useEffect(() => {
+    if (fileContents) {
+      const artifacts = Object.keys(fileContents)
+        .filter(path => path.startsWith('artifacts/'))
+        .map(path => path.replace('artifacts/', ''))
+        .filter(file => file.endsWith('.arc32.json') || file.endsWith('.arc56.json'));
+      setArtifactFiles(artifacts);
+      return;
+    }
+
     const fetchArtifacts = async () => {
       if (!webcontainer) return;
       try {
@@ -24,15 +34,14 @@ export function ArtifactsPanel({ webcontainer, onDeploy }: ArtifactsPanelProps) 
 
     fetchArtifacts();
 
-    // Set up a watcher for the artifacts directory
     if (webcontainer) {
       const watcher = webcontainer.fs.watch("artifacts", (event: string, filename: string) => {
         console.log(`Artifacts change detected: ${event} on ${filename}`);
-        fetchArtifacts(); // Re-fetch artifacts on change
+        fetchArtifacts();
       });
       return () => watcher.close();
     }
-  }, [webcontainer]);
+  }, [webcontainer, fileContents]);
 
   return (
     <div className="p-4 h-full overflow-auto" style={{ backgroundColor: "var(--background-color)", color: "var(--text-color)" }}>

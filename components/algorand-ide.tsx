@@ -25,6 +25,7 @@ const supabase = createClient(
 )
 
 import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import algosdk from "algosdk"
 import {
   Dialog,
@@ -77,6 +78,8 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
   const [currentDeployFilename, setCurrentDeployFilename] = useState<string | null>(null);
   const [contractArgs, setContractArgs] = useState<any[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deployStatus, setDeployStatus] = useState<'deploying' | 'success' | 'error' | null>(null);
+  const [deployedAppId, setDeployedAppId] = useState<string>('');
   const [isMethodsModalOpen, setIsMethodsModalOpen] = useState(false);
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
@@ -250,6 +253,18 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
     handleTerminalOutput("Compiling PuyaTs contract...");
     
     try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const updatedFiles = { ...currentFiles };
+      updatedFiles.artifacts = { directory: {} };
+      
+      const newFileContents = { ...fileContents };
+      Object.keys(newFileContents).forEach(key => {
+        if (key.startsWith('artifacts/') || key.startsWith('tmp/') || key.startsWith('cache/') || key.startsWith('dist/')) {
+          delete newFileContents[key];
+        }
+      });
+      
       const algoFiles = Object.keys(fileContents).filter(path => path.endsWith('.algo.ts'));
       
       if (algoFiles.length === 0) {
@@ -259,20 +274,32 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       
       for (const filePath of algoFiles) {
         const filename = filePath.split('/').pop();
+        const contractName = filename?.replace('.algo.ts', '') || 'contract';
         const code = fileContents[filePath];
         
-        handleTerminalOutput(`Compiling ${filename}...`);
-        console.log(`[BUILD] PuyaTs compilation started for ${filename}`);
+        console.log("=== COMPILING FILE ===");
+        console.log(filePath);
+        console.log(code);
+        
+        if (!code || code.trim().length === 0) {
+          handleTerminalOutput(`Skipping empty file: ${filePath}`);
+          continue;
+        }
+        
+        handleTerminalOutput(`Compiling ${filePath}...`);
+        console.log(`[BUILD] PuyaTs compilation started for ${filePath}`);
         
         const response = await fetch('/api/compile', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Force-Fresh-Compiler': 'true',
           },
           body: JSON.stringify({
             type: 'puyats',
             filename,
-            code
+            code,
+            forceFresh: true
           })
         });
         
@@ -280,32 +307,27 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         console.log(`[BUILD] PuyaTs compilation result:`, result);
         
         if (result.ok && result.files) {
-          const updatedFiles = { ...currentFiles };
-          if (!updatedFiles.artifacts) {
-            updatedFiles.artifacts = { directory: {} };
-          }
-          
-          const newFileContents = { ...fileContents };
-          
           for (const [fileName, fileData] of Object.entries(result.files)) {
             const data = (fileData as any).data;
             const encoding = (fileData as any).encoding;
             const content = encoding === 'base64' ? atob(data) : data;
             
-            updatedFiles.artifacts.directory[fileName] = {
+            const uniqueFileName = fileName.replace(/^[^.]+/, contractName);
+            
+            updatedFiles.artifacts.directory[uniqueFileName] = {
               file: { contents: content }
             };
             
-            newFileContents[`artifacts/${fileName}`] = content;
+            newFileContents[`artifacts/${uniqueFileName}`] = content;
           }
-          
-          setCurrentFiles(updatedFiles);
-          setFileContents(newFileContents);
-          handleTerminalOutput(`Successfully compiled ${filename}`);
+          handleTerminalOutput(`Successfully compiled ${filePath}`);
         } else {
-          handleTerminalOutput(`Failed to compile ${filename}: ${result.error || 'Unknown error'}`);
+          handleTerminalOutput(`Failed to compile ${filePath}: ${result.error || 'Unknown error'}`);
         }
       }
+      
+      setCurrentFiles(updatedFiles);
+      setFileContents(newFileContents);
     } catch (error: any) {
       console.error('[BUILD] PuyaTs build error:', error);
       handleTerminalOutput(`Build failed: ${error.message || error}`);
@@ -645,6 +667,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
 
   const executeDeploy = async (filename: string, args: (string | number)[]) => {
     setIsDeploying(true);
+    setDeployStatus('deploying');
     console.log(`executeDeploy called for ${filename} with args:`, args);
     try {
       const artifactPath = `artifacts/${filename}`;
@@ -678,12 +701,25 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
         defaultSigner: algosdk.makeBasicAccountTransactionSigner(account)
       });
 
-      const deployResult = await appFactory.send.create({
+      const hasBareCreate = appSpec.bare_call_config?.no_op === 'CREATE';
+      const hasCreateMethod = appSpec.hints?.['createApplication()void'];
+      
+      let deployResult;
+      if (hasBareCreate) {
+        deployResult = await (appFactory.send as any).bare.create({
           sender: account.addr,
-          signer: algosdk.makeBasicAccountTransactionSigner(account),
-          method: "createApplication",
-          args: args
-      });
+          signer: algosdk.makeBasicAccountTransactionSigner(account)
+        });
+      } else if (hasCreateMethod) {
+        deployResult = await appFactory.send.create({
+          method: 'createApplication',
+          methodArgs: args,
+          sender: account.addr,
+          signer: algosdk.makeBasicAccountTransactionSigner(account)
+        });
+      } else {
+        throw new Error('Contract has no CREATE handler (bare or ABI)');
+      }
 
       console.log("Deploy result:", deployResult);
       let appId = 'unknown';
@@ -711,10 +747,17 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       const updated = [deployed, ...prev];
       localStorage.setItem("deployedContracts", JSON.stringify(updated));
       setDeployedContracts(updated);
-      toast({ title: "Deployment completed!", description: `App ID: ${deployed.appId}` });
+      setDeployedAppId(deployed.appId);
+      setDeployStatus('success');
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
-      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+      setDeployStatus('error');
+      toast({ 
+        title: "❌ Deployment Failed", 
+        description: error.message || String(error), 
+        variant: "destructive",
+        duration: 5000
+      });
     } finally {
       setIsDeploying(false);
       setIsDeployModalOpen(false);
@@ -731,20 +774,30 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
       
       const appSpec = JSON.parse(fileContent);
+      console.log("Parsed appSpec:", appSpec);
 
       let contractSpec = appSpec;
       if (filename.endsWith('.arc32.json') && appSpec.contract) {
         contractSpec = appSpec.contract;
       }
 
-      const createMethod = contractSpec.methods.find((m: any) => m.name === "createApplication");
+      if (!contractSpec.methods || !Array.isArray(contractSpec.methods)) {
+        console.log("No methods found, deploying without args");
+        await executeDeploy(filename, []);
+        return;
+      }
+
+      const createMethod = contractSpec.methods.find((m: any) => 
+        m && (m.name === "createApplication" || m.actions?.create === true)
+      );
 
       if (createMethod && createMethod.args && createMethod.args.length > 0) {
         setCurrentDeployFilename(filename);
         setContractArgs(createMethod.args);
         const initialArgs = createMethod.args.map((arg: any) => {
-            if (arg.type.includes('uint')) return 0;
-            if (arg.type === 'address') return wallet?.address || '';
+            const argType = arg?.type || arg?.struct || '';
+            if (typeof argType === 'string' && argType.includes('uint')) return 0;
+            if (argType === 'address') return wallet?.address || '';
             return '';
         });
         setDeployArgs(initialArgs);
@@ -754,7 +807,13 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       }
     } catch (error: any) {
       console.error("Deploy artifact failed:", error);
-      toast({ title: "Deploy failed", description: error.message || String(error), variant: "destructive" });
+      setDeployStatus('error');
+      toast({ 
+        title: "❌ Deployment Failed", 
+        description: error.message || String(error), 
+        variant: "destructive",
+        duration: 5000
+      });
     }
   };
 
@@ -800,7 +859,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       console.error('Failed to save file:', error);
       handleTerminalOutput(`Failed to save: ${activeFile}`);
     }
-  }
+  };
 
   const handleSidebarSectionChange = (section: string) => {
     if (section === 'ai-chat') {
@@ -812,7 +871,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
       return;
     }
     setSidebarSection(section);
-  }
+  };
 
   const executeMethod = async () => {
     if (!selectedContract || !selectedMethod) return;
@@ -958,7 +1017,7 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                   ) : sidebarSection === "tutorials" ? (
                     <TutorialPanel />
                   ) : (sidebarSection === "artifacts" || sidebarSection === "build") ? (
-                    <ArtifactsPanel webcontainer={null} onDeploy={deployArtifact} />
+                    <ArtifactsPanel webcontainer={null} onDeploy={deployArtifact} fileContents={fileContents} />
                   ) : sidebarSection === "programs" ? (
                     <ProgramsPanel
                       deployedContracts={deployedContracts}
@@ -977,7 +1036,10 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                       onFileSelect={setActiveFile}
                       onFileClose={closeFile}
                       onFileContentChange={async (filePath, content) => {
-                        setFileContents((prev) => ({ ...prev, [filePath]: content }))
+                        setFileContents((prev) => {
+                          const updated = { ...prev, [filePath]: content };
+                          return updated;
+                        });
                       }}
                       onSave={handleSave}
                       webcontainer={null}
@@ -1023,28 +1085,16 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
                     <ResizableHandle />
                     <ResizablePanel defaultSize={50} minSize={30}>
                       <div className="h-full border-t border-l" style={{ backgroundColor: "var(--background-color)", borderColor: "var(--border-color)" }}>
-                        <div className="h-full flex flex-col">
-                          <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
-                            <span className="text-[#cccccc]">AI Chat</span>
-                            <button
-                              onClick={() => setShowAIChat(false)}
-                              className="text-[#cccccc] hover:text-white transition-colors"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className="flex-1">
-                            <AIChat 
-                              title="" 
-                              selectedTemplate={selectedTemplate}
-                              activeFile={activeFile}
-                              fileContent={activeFile ? fileContents[activeFile] : undefined}
-                              onFileUpdate={async (filePath: string, content: string) => {
-                                setFileContents((prev) => ({ ...prev, [filePath]: content }));
-                              }}
-                            />
-                          </div>
-                        </div>
+                        <AIChat 
+                          title="AI Chat" 
+                          selectedTemplate={selectedTemplate}
+                          activeFile={activeFile}
+                          fileContent={activeFile ? fileContents[activeFile] : undefined}
+                          onFileUpdate={async (filePath: string, content: string) => {
+                            setFileContents((prev) => ({ ...prev, [filePath]: content }));
+                          }}
+                          onClose={() => setShowAIChat(false)}
+                        />
                       </div>
                     </ResizablePanel>
                   </>
@@ -1105,25 +1155,29 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           ) : (
             <>
               <div className="grid gap-4 py-4">
-                {contractArgs.map((arg, index) => (
-                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name}>
+                {contractArgs.map((arg, index) => {
+                  const argType = arg.type || arg.struct || 'string';
+                  const isUint = typeof argType === 'string' && argType.includes('uint');
+                  return (
+                  <div className="grid grid-cols-4 items-center gap-4" key={arg.name || index}>
                     <Label htmlFor={`arg-${index}`} className="text-right">
-                      {arg.name} ({arg.type})
+                      {arg.name} ({argType})
                     </Label>
                     <Input
                       id={`arg-${index}`}
                       value={deployArgs[index] || ''}
                       onChange={(e) => {
                         const newArgs = [...deployArgs];
-                        const value = arg.type.startsWith('uint') ? Number(e.target.value) : e.target.value;
+                        const value = isUint ? Number(e.target.value) : e.target.value;
                         newArgs[index] = value;
                         setDeployArgs(newArgs);
                       }}
                       className="col-span-3"
-                      type={arg.type.startsWith('uint') ? 'number' : 'text'}
+                      type={isUint ? 'number' : 'text'}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <DialogFooter>
                 <Button onClick={() => {
@@ -1206,6 +1260,43 @@ export default function AlgorandIDE({ initialFiles, selectedTemplate, selectedTe
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={deployStatus !== null} onOpenChange={(open) => !open && setDeployStatus(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {deployStatus === 'deploying' && 'Deploying Contract'}
+              {deployStatus === 'success' && '✅ Deployment Successful!'}
+              {deployStatus === 'error' && '❌ Deployment Failed'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-8">
+            {deployStatus === 'deploying' && (
+              <>
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-sm text-muted-foreground">Deploying to TestNet...</p>
+              </>
+            )}
+            {deployStatus === 'success' && (
+              <>
+                <div className="text-6xl mb-4">🎉</div>
+                <p className="text-lg font-medium mb-2">Contract Deployed!</p>
+                <p className="text-sm text-muted-foreground mb-4">App ID: {deployedAppId}</p>
+                <Button
+                  onClick={() => {
+                    window.open(`https://lora.algokit.io/testnet/application/${deployedAppId}`, '_blank');
+                    setDeployStatus(null);
+                  }}
+                  className="w-full"
+                >
+                  View on Explorer
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Toaster />
     </div>
   )
 }

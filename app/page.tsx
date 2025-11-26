@@ -30,7 +30,7 @@ export default function HomePage() {
             className="object-contain p-2"
           />
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Algorand IDE
+            Algocraft IDE
           </h1>
         </div>
         <p className="mt-2 text-lg text-gray-500 dark:text-gray-400">

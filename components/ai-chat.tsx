@@ -18,6 +18,7 @@ interface AIChatProps {
   activeFile?: string;
   fileContent?: string;
   onFileUpdate?: (filePath: string, content: string) => void;
+  onClose?: () => void;
 }
 
 interface Message {
@@ -37,8 +38,8 @@ if (supabaseUrl === "https://toqvsuthxooqjelcayhm.supabase.co") {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate }) => {
-  const [selectedModel, setSelectedModel] = useState<string>('meta-llama/llama-3.2-3b-instruct:free');
+const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", activeFile, fileContent, onFileUpdate, onClose }) => {
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -82,8 +83,7 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
           .limit(1);
         
         if (error) {
-          console.error(`❌ Supabase connection failed for table ${tableName}:`, error);
-          console.log(`💡 Make sure you have set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables`);
+          console.log(`ℹ️ Embeddings table ${tableName} not available - using fallback context`);
         } else {
           console.log(`✅ Supabase connection successful for table ${tableName}`);
           
@@ -111,92 +111,77 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
     console.log('Test markdown:', testMarkdown);
   }, [selectedTemplate]);
 
-  // Real Supabase integration for fetching chunks
-  const getTopChunks = async (queryEmbedding: number[], topK: number = 6) => {
-    const tableName = getTableName(selectedTemplate);
-    console.log(`🔍 Starting vector search in table: ${tableName}`);
-    console.log(`📊 Query embedding length: ${queryEmbedding.length}`);
-    console.log(`🎯 Looking for top ${topK} most similar chunks`);
+  // Get framework-specific context without embeddings
+  const getFrameworkContext = (template: string) => {
+    const contexts: Record<string, string> = {
+      "PuyaTs": `You generate PuyaTS smart contracts using @algorandfoundation/algorand-typescript.
 
-    try {
-      // Fetch all chunks from the appropriate table
-      console.log(`📡 Fetching chunks from Supabase table: ${tableName}`);
-      const { data: chunks, error } = await supabase
-        .from(tableName)
-        .select("id, text, embedding");
+Follow these rules with zero exceptions:
+1. ABI methods may ONLY use these parameter and return types:
+   - string
+   - uint64
+   - byte[]
+2. Never allow number anywhere in a method signature. If the user requests a method with number, automatically convert it to uint64.
+3. Never allow JavaScript types in ABI methods:
+   - no number
+   - no bigint
+   - no boolean
+   - no objects { }
+   - no arrays [] (except byte[])
+   - no interfaces
+   - no union types
+   - no optional parameters
+   - no generics
+4. If the user provides an object or struct-like argument: Flatten it into multiple ABI parameters using only: string, uint64, byte[]
+5. Never call or reference JavaScript constructors or helpers:
+   - no Number()
+   - no String()
+   - no Boolean()
+   - no parseInt()
+   - no JSON operations
+   - no math helpers
+6. All arithmetic must occur directly on uint64 values.
+7. Internal methods are allowed to use number, but ABI-exposed ones never.
+8. Output format must always be:
 
-      if (error) {
-        console.error(`❌ Supabase error:`, error);
-        throw error;
-      }
+import { Contract, uint64 } from '@algorandfoundation/algorand-typescript'
 
-      console.log(`✅ Successfully fetched ${chunks?.length || 0} chunks from ${tableName} table`);
+export class ContractName extends Contract {
+  // methods only using string, uint64, byte[]
+}
 
-      if (!chunks || chunks.length === 0) {
-        console.warn(`⚠️ No chunks found in ${tableName} table`);
-        return [];
-      }
+9. Output code only, no explanations, no comments, no surrounding text.
+10. Any violation of the rules must be auto-corrected silently by rewriting the method properly.
 
-      // Calculate similarity scores for each chunk
-      console.log(`🧮 Calculating cosine similarity scores...`);
-      const scored = chunks.map((chunk) => {
-        try {
-          // Parse the embedding string to array of numbers
-          const embedding = chunk.embedding.split(",").map(Number);
-          const score = cosineSimilarity(queryEmbedding, embedding);
-          
-          console.log(`📊 Chunk ${chunk.id}: similarity score = ${score.toFixed(4)}`);
-          
-          return {
-            ...chunk,
-            score,
-            originalEmbedding: chunk.embedding,
-            parsedEmbedding: embedding
-          };
-        } catch (parseError) {
-          console.error(`❌ Error parsing embedding for chunk ${chunk.id}:`, parseError);
-          console.log(`🔍 Raw embedding data:`, chunk.embedding);
-          return {
-            ...chunk,
-            score: 0,
-            error: "Failed to parse embedding"
-          };
-        }
-      });
-
-      // Sort by score and get top K
-      scored.sort((a, b) => b.score - a.score);
-      const topChunks = scored.slice(0, topK);
-
-      console.log(`🏆 Top ${topChunks.length} chunks by similarity:`);
-      topChunks.forEach((chunk, index) => {
-        console.log(`${index + 1}. Chunk ${chunk.id}: score = ${chunk.score.toFixed(4)}`);
-        console.log(`   Text preview: "${chunk.text.substring(0, 100)}..."`);
-      });
-
-      return topChunks;
-    } catch (error) {
-      console.error(`❌ Error in getTopChunks:`, error);
-      // Fallback to mock data if Supabase fails
-      console.log(`🔄 Falling back to mock data due to error`);
-      return [
-        { 
-          text: `[FALLBACK] Sample context from ${tableName} table (Supabase connection failed)`, 
-          score: 0.95,
-          id: 'fallback-1'
-        },
-        { 
-          text: `[FALLBACK] Another relevant piece of information from ${tableName}`, 
-          score: 0.87,
-          id: 'fallback-2'
-        },
-        { 
-          text: `[FALLBACK] Additional context for the query from ${tableName}`, 
-          score: 0.82,
-          id: 'fallback-3'
-        }
-      ];
-    }
+Example: If user asks for public hello(name: string, age: number): string
+You output: public hello(name: string, age: uint64): string`,
+      
+      "TealScript": `TealScript is a TypeScript-based language for Algorand smart contracts. Key features:
+- Contracts extend Contract class
+- Use decorators for ABI methods
+- State variables with GlobalStateKey and LocalStateKey
+- Built-in Algorand types and operations
+- Compile to TEAL and generate ARC56 artifacts
+- Test with Jest framework`,
+      
+      "PuyaPy": `PuyaPy (AlgoPy) is a Pythonic framework for Algorand smart contracts. Key features:
+- Import from algopy module
+- Contracts extend ARC4Contract or Contract
+- Use @abimethod decorator for ABI methods
+- Type hints with UInt64, Bytes, Account, etc.
+- Global and local state with typed storage
+- Compile with 'puyapy' command to generate TEAL`,
+      
+      "Pyteal": `PyTeal is a Python library for writing Algorand smart contracts. Key features:
+- Import from pyteal module
+- Use Expr types for all operations
+- Approval and clear programs
+- Scratch variables and global/local state
+- Compile to TEAL using compileTeal()
+- Note: PyTeal is deprecated, consider using PuyaPy instead`
+    };
+    
+    return contexts[template] || contexts["PuyaTs"];
   };
 
   // Extract code from AI response using regex
@@ -206,20 +191,20 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
     return match ? match[1].trim() : null;
   };
 
-  // Simulated OpenRouter API call (you'll need to replace with actual API key)
-  const askOpenRouter = async (prompt: string, isCodeEdit: boolean = false) => {
+  // OpenAI API call
+  const askOpenAI = async (prompt: string, isCodeEdit: boolean = false) => {
     try {
-      console.log(`🤖 Sending request to OpenRouter API...`);
+      console.log(`🤖 Sending request to OpenAI API...`);
       console.log(`📝 Prompt length: ${prompt.length} characters`);
       
       const systemPrompt = isCodeEdit 
         ? `You are a coding assistant integrated into an IDE. The user will provide the current code file. Your task is to return the full modified code with the requested changes applied. Do not explain, just return the updated code wrapped in a single code block. Preserve formatting, comments, and structure. Do not remove unrelated code.`
-        : `You are a helpful Algorand development assistant specializing in ${selectedTemplate}. Use the provided context to answer questions accurately and helpfully. Always format your responses using markdown for better readability. Use code blocks with appropriate language tags for code examples.`;
+        : `You are a helpful Algorand development assistant specializing in ${selectedTemplate}. You have deep knowledge of Algorand smart contract development. Always format your responses using markdown for better readability. Use code blocks with appropriate language tags for code examples. Provide practical, working examples when possible.`;
       
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -232,7 +217,7 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
       });
 
       if (!response.ok) {
-        throw new Error(`OpenRouter API Error: ${response.statusText}`);
+        throw new Error(`OpenAI API Error: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -241,12 +226,12 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
         throw new Error(`API Error: ${data.error.message || 'Unknown error'}`);
       }
       
-      console.log(`✅ OpenRouter API response received successfully`);
+      console.log(`✅ OpenAI API response received successfully`);
       console.log(`🤖 AI response length: ${data.choices[0].message.content.length} characters`);
       
       return data.choices[0].message.content;
     } catch (error: any) {
-      console.error("❌ OpenRouter API error:", error);
+      console.error("❌ OpenAI API error:", error);
       
       if (error.message?.includes('rate-limited') || error.message?.includes('429')) {
         return "The AI service is currently rate-limited. Please try switching to a different model or wait a moment before trying again.";
@@ -267,33 +252,12 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
       setIsLoading(true);
 
       try {
-        // Step 1: Get embedding for the query
-        console.log(`🔤 Step 1: Getting embedding for user query...`);
-        const queryEmbedding = await getEmbedding(userMessage);
-        console.log(`✅ Query embedding generated successfully`);
-        console.log(`📊 Embedding vector length: ${queryEmbedding.length}`);
-        console.log(`🔢 First 5 values: [${queryEmbedding.slice(0, 5).join(', ')}...]`);
+        // Get framework-specific context
+        console.log(`📚 Getting framework context for ${selectedTemplate}...`);
+        const context = getFrameworkContext(selectedTemplate);
+        console.log(`✅ Context loaded successfully`);
 
-        // Step 2: Search for similar chunks in the appropriate table
-        console.log(`🔍 Step 2: Searching similar chunks in ${getTableName(selectedTemplate)} table...`);
-        const topChunks = await getTopChunks(queryEmbedding);
-
-        // Step 3: Build context from top chunks
-        console.log(`📚 Step 3: Building context from top chunks...`);
-        const context = topChunks.map((c: any) => c.text).join("\n\n");
-        console.log(`📖 Context built successfully`);
-        console.log(`📊 Context length: ${context.length} characters`);
-        console.log(`📝 Context preview: "${context.substring(0, 200)}..."`);
-        
-        // Log detailed context information
-        console.log(`🔍 Detailed context breakdown:`);
-        topChunks.forEach((chunk, index) => {
-          console.log(`   Chunk ${index + 1} (ID: ${chunk.id}, Score: ${chunk.score.toFixed(4)}):`);
-          console.log(`   Text: "${chunk.text}"`);
-          console.log(`   ---`);
-        });
-
-        // Step 4: Generate answer using OpenRouter
+        // Step 4: Generate answer using OpenAI
         console.log(`🤖 Step 4: Generating answer with context...`);
         
         // Check if user wants to edit current file
@@ -320,7 +284,7 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
         console.log(prompt);
         console.log(`--- END PROMPT ---`);
         
-        const answer = await askOpenRouter(prompt, isCodeEditRequest);
+        const answer = await askOpenAI(prompt, isCodeEditRequest);
         
         // If it's a code edit request, extract and apply the code
         if (isCodeEditRequest && activeFile && onFileUpdate) {
@@ -503,74 +467,92 @@ const AIChat: React.FC<AIChatProps> = ({ title, selectedTemplate = "Pyteal", act
 
   return (
     <div className="h-full flex flex-col bg-[#1e1e1e] text-[#d4d4d4]">
-      <div className="h-9 bg-[#2d2d30] flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide border-b border-[#3e3e42] flex-shrink-0">
-        <span className="text-[#cccccc]">{title}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs">Template: {selectedTemplate}</span>
-          {activeFile && <span className="text-xs text-blue-400">File: {activeFile.split('/').pop()}</span>}
-          <span className="text-xs">Model:</span>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-[180px] h-7 text-xs">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (Free)</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="bg-[#2d2d30] border-b border-[#3e3e42] flex-shrink-0">
+        <div className="h-9 flex items-center justify-between px-3 text-xs font-medium">
+          <span className="text-[#cccccc] uppercase tracking-wide">{title}</span>
+          <div className="flex items-center gap-2">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-[160px] h-6 text-xs">
+                <SelectValue placeholder="Model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+              </SelectContent>
+            </Select>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-[#cccccc] hover:text-white transition-colors"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="px-3 pb-2 flex items-center gap-2 text-xs text-[#969696]">
+          <span>Template: <span className="text-[#cccccc]">{selectedTemplate}</span></span>
+          {activeFile && (
+            <>
+              <span>•</span>
+              <span>File: <span className="text-blue-400">{activeFile.split('/').pop()}</span></span>
+            </>
+          )}
         </div>
       </div>
-      <ScrollArea className="flex-1 p-4">
-        <div className="flex flex-col space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-[#969696]">
-              <h2 className="text-xl mb-2">Welcome back, builder!</h2>
-              <p className="mb-1">Ask Questions about {selectedTemplate} development</p>
-              <p className="text-sm">I'll search through the {getTableName(selectedTemplate)} knowledge base to help you!</p>
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] p-4 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-white border border-gray-700'
-                  }`}
-                >
-                  {message.type === 'user' ? (
-                    <div className="whitespace-pre-wrap">{message.text}</div>
-                  ) : (
-                    <div className="ai-chat-prose">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                        components={markdownComponents}
-                      >
-                        {message.text}
-                      </ReactMarkdown>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ minHeight: 0 }}>
+        <div className="p-4 flex flex-col space-y-4">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center min-h-[200px] text-center text-[#969696]">
+                  <h2 className="text-xl mb-2">Welcome back, builder!</h2>
+                  <p className="mb-1">Ask questions about {selectedTemplate} development</p>
+                  <p className="text-sm">I'm here to help with Algorand smart contracts!</p>
+                </div>
+              ) : (
+                messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] p-4 rounded-lg break-words ${
+                        message.type === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800 text-white border border-gray-700'
+                      }`}
+                    >
+                      {message.type === 'user' ? (
+                        <div className="whitespace-pre-wrap">{message.text}</div>
+                      ) : (
+                        <div className="ai-chat-prose">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                            components={markdownComponents}
+                          >
+                            {message.text}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))
+              )}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] p-4 rounded-lg bg-gray-800 text-white border border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      Thinking...
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] p-4 rounded-lg bg-gray-800 text-white border border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  Thinking...
-                </div>
-              </div>
-            </div>
-          )}
+              )}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
-      <div className="p-4 border-t border-[#3e3e42] flex items-center gap-2">
+      </div>
+      <div className="p-4 border-t border-[#3e3e42] flex items-center gap-2 flex-shrink-0">
         <Input
           type="text"
           placeholder="Ask about Algorand development..."
